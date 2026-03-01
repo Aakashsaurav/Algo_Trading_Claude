@@ -1,11 +1,6 @@
 """
 broker/instrument_manager.py
 ------------------------------
-For future development:
-Call from Jan 2020 or Jan 2000 should not be made while trying to access options and futures data.
-Options and futures data have their own starting date.
-This will reduce number of API calls.
-
 Instrument key lookup for all Upstox-traded securities.
 
 SUPPORTED INSTRUMENT TYPES:
