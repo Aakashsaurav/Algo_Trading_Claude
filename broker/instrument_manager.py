@@ -1,354 +1,393 @@
 """
 broker/instrument_manager.py
 ------------------------------
-Manages the Upstox instrument master — the complete list of all tradeable
-instruments (stocks, futures, options, indices) with their unique keys.
+For future development:
+Call from Jan 2020 or Jan 2000 should not be made while trying to access options and futures data.
+Options and futures data have their own starting date.
+This will reduce number of API calls.
 
-WHY THIS EXISTS:
-- Upstox API requires an instrument_key (like "NSE_EQ|INE009A01021") for every call.
-- Traders know stocks by symbol (like "INFY"), not by ISIN.
-- This module bridges the gap: symbol → instrument_key lookup.
+Instrument key lookup for all Upstox-traded securities.
 
-HOW UPSTOX INSTRUMENT DATA WORKS:
-- Upstox publishes a fresh instrument CSV every morning (before market open).
-- We download it once per day and store it locally.
-- The CSV contains: instrument_key, exchange, symbol, name, lot_size, expiry, etc.
+SUPPORTED INSTRUMENT TYPES:
+    EQUITY  - Equities        (NSE_EQ, BSE_EQ)
+    INDEX   - Indices         (NSE_INDEX, BSE_INDEX)
+    FUTSTK  - Stock Futures   (NSE_FO, BSE_FO)
+    FUTIDX  - Index Futures   (NSE_FO, BSE_FO)
+    FUTCOM  - Commodity Fut.  (MCX_FO, NSE_COM)
+    FUTCUR  - Currency Fut.   (NCD_FO, BCD_FO)
+    FUTIRT  - IR Futures      (BCD_FO)
+    OPTSTK  - Stock Options   (NSE_FO, BSE_FO)
+    OPTIDX  - Index Options   (NSE_FO, BSE_FO)
+    OPTCOM  - Commodity Opts  (NSE_COM, MCX_FO)
+    OPTCUR  - Currency Opts   (NCD_FO, BCD_FO)
+    OPTIRD  - IR Options      (BCD_FO)
 
 USAGE:
-    from broker.instrument_manager import instrument_manager
-    key = instrument_manager.get_instrument_key("INFY", "NSE_EQ")
-    print(key)  # → "NSE_EQ|INE009A01021"
+    from broker.instrument_manager import get_instrument_key
+
+    # Equity
+    key = get_instrument_key("EQUITY", "NSE", "INFY")
+
+    # Stock Future
+    key = get_instrument_key("FUTSTK", "NSE", "RELIANCE", expiry="30MAR26")
+
+    # Index Call Option
+    key = get_instrument_key(
+        "OPTIDX", "NSE", "NIFTY",
+        option_type="CE", expiry="30MAR26", strike=25500
+    )
+    #Stock Put Option
+    key = get_instrument_key_improved(
+            instrument_type="OPTSTK",
+            exchange="NSE",
+            trading_symbol="INFY",
+            option_type="PE",
+            expiry="24FEB26",
+            strike=1200
+    )
+
+    #Commodity Option
+    key = get_instrument_key_improved(
+            instrument_type="OPTCOM",
+            exchange="MCX",
+            trading_symbol="GOLD",
+            option_type="CE",
+            expiry="27FEB26",
+            strike=118300
+    )
 """
 
 import gzip
-import io
+import json
 import logging
-from datetime import date
+import requests
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-import pandas as pd
-import requests
-
 from config import config
 
+# ---------------------------------------------------------------------------
+# Logger
+# ---------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+complete_instru_list = (
+    'https://assets.upstox.com/market-quote/instruments/exchange/complete.json.gz'
+)
 
-class InstrumentManager:
+# DATA_DIR uses config.DATA_DIR (project-level data/ folder).
+# Do NOT use Path(__file__).parent / 'data' here — that would create
+# broker/data/ instead of the intended project-level data/ directory.
+DATA_DIR = config.DATA_DIR
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+INSTRUMENT_DATA_FILE = DATA_DIR / 'complete_instru_list.json'
+
+
+# ---------------------------------------------------------------------------
+# Download / cache
+# ---------------------------------------------------------------------------
+
+def download_and_save_instrument_list(force_download: bool = False) -> list:
     """
-    Downloads, caches, and provides lookup utilities for Upstox instruments.
+    Download instrument list from Upstox URL and save locally.
+    Check local cache first before downloading.
+    Re-download if the file was last modified before today's 7 AM.
 
-    The instrument DataFrame (self._instruments) is the core data structure.
-    It's loaded once per day and kept in memory for fast lookups.
+    Args:
+        force_download (bool): If True, download even if local file exists.
+
+    Returns:
+        list: Parsed instrument data (list of dicts).
     """
+    # Check if local file exists and is recent enough
+    if INSTRUMENT_DATA_FILE.exists() and not force_download:
+        file_mtime = datetime.fromtimestamp(INSTRUMENT_DATA_FILE.stat().st_mtime)
+        today_7am = datetime.today().replace(hour=7, minute=0, second=0, microsecond=0)
 
-    # Relevant columns from the Upstox instrument CSV
-    REQUIRED_COLUMNS = [
-        "instrument_key",
-        "exchange",
-        "trading_symbol",
-        "name",
-        "instrument_type",
-        "lot_size",
-        "freeze_quantity",
-        "expiry",
-        "strike",
-        "option_type",
-        "tick_size",
-        "isin",
-        "segment",
-    ]
-
-    def __init__(self):
-        self._instruments: Optional[pd.DataFrame] = None
-        self._loaded_date: Optional[date] = None
-
-    def _download_instruments(self) -> pd.DataFrame:
-        """
-        Download the latest instrument CSV from Upstox.
-
-        The file is a gzip-compressed CSV updated each morning.
-        We download, decompress, and parse it into a DataFrame.
-
-        Returns:
-            pd.DataFrame: Full instrument master.
-
-        Raises:
-            requests.RequestException: If download fails.
-        """
-        url = config.INSTRUMENT_CSV_URL
-        logger.info(f"Downloading instrument master from Upstox...")
-
-        try:
-            response = requests.get(url, timeout=60)
-            response.raise_for_status()
-
-        except requests.exceptions.Timeout:
-            logger.error("Instrument download timed out. Check your internet connection.")
-            raise
-        except requests.exceptions.HTTPError as e:
-            logger.error(f"Failed to download instruments: {e}")
-            raise
-
-        # Decompress gzip content and parse as CSV
-        try:
-            with gzip.open(io.BytesIO(response.content), "rt", encoding="utf-8") as f:
-                df = pd.read_csv(f, low_memory=False)
-
-        except Exception as e:
-            logger.error(f"Failed to decompress/parse instrument CSV: {e}")
-            raise
-
-        logger.info(f"Downloaded {len(df):,} instruments from Upstox.")
-        return df
-
-    def _load_or_refresh(self):
-        """
-        Load instruments into memory. Uses cached data if already loaded today.
-
-        Logic:
-        1. If in-memory data was loaded today → do nothing (already fresh).
-        2. If a local CSV exists from today → load from disk (fast).
-        3. Otherwise → download fresh from Upstox, save to disk.
-        """
-        today = date.today()
-
-        # 1. Already loaded today — use in-memory cache
-        if self._instruments is not None and self._loaded_date == today:
-            return
-
-        csv_path = config.INSTRUMENT_CSV_PATH
-
-        # 2. Check if we already saved today's file on disk
-        if csv_path.exists():
-            file_date = date.fromtimestamp(csv_path.stat().st_mtime)
-            if file_date == today:
-                logger.info(f"Loading instruments from today's cached file: {csv_path}")
-                self._instruments = pd.read_csv(csv_path, low_memory=False)
-                self._loaded_date = today
-                return
-
-        # 3. Download fresh copy and save
-        df = self._download_instruments()
-
-        # Save to disk for reuse during the same day
-        csv_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(csv_path, index=False)
-        logger.info(f"Instrument master saved to: {csv_path}")
-
-        self._instruments = df
-        self._loaded_date = today
-
-    def refresh(self):
-        """
-        Force a fresh download of the instrument master, ignoring cache.
-        Call this at market open (9:00 AM) each trading day.
-        """
-        logger.info("Force-refreshing instrument master...")
-        self._loaded_date = None  # Invalidate cache
-        self._instruments = None
-        self._load_or_refresh()
-
-    def get_all_instruments(self) -> pd.DataFrame:
-        """
-        Return the full instrument master as a DataFrame.
-
-        Returns:
-            pd.DataFrame: All instruments with full metadata.
-        """
-        self._load_or_refresh()
-        return self._instruments.copy()
-
-    def get_instrument_key(
-        self,
-        trading_symbol: str,
-        exchange: str = "NSE_EQ"
-    ) -> Optional[str]:
-        """
-        Get the Upstox instrument_key for a given trading symbol.
-
-        Args:
-            trading_symbol (str): The symbol as displayed on NSE. e.g. "INFY", "RELIANCE"
-            exchange (str): Exchange segment. Common values:
-                            "NSE_EQ"  → NSE equity (default)
-                            "BSE_EQ"  → BSE equity
-                            "NSE_FO"  → NSE F&O (futures and options)
-                            "MCX_FO"  → MCX commodities
-
-        Returns:
-            str: instrument_key if found, None if not found.
-
-        Example:
-            key = instrument_manager.get_instrument_key("INFY", "NSE_EQ")
-            # Returns: "NSE_EQ|INE009A01021"
-        """
-        self._load_or_refresh()
-
-        mask = (
-            (self._instruments["trading_symbol"].str.upper() == trading_symbol.upper()) &
-            (self._instruments["exchange"].str.upper() == exchange.upper())
-        )
-
-        matches = self._instruments[mask]
-
-        if matches.empty:
-            logger.warning(
-                f"Instrument not found: symbol='{trading_symbol}', exchange='{exchange}'"
+        if file_mtime >= today_7am:
+            logger.info(f"Loading instrument data from local cache: {INSTRUMENT_DATA_FILE}")
+            with open(INSTRUMENT_DATA_FILE, 'r') as f:
+                return json.load(f)
+        else:
+            logger.info(
+                f"File last modified at {file_mtime}, which is before today's 7 AM. "
+                "Re-downloading..."
             )
-            return None
 
-        if len(matches) > 1:
-            # For equities, prefer the plain equity row (not derivatives)
-            equity_matches = matches[matches["instrument_type"] == "EQ"]
-            if not equity_matches.empty:
-                return equity_matches.iloc[0]["instrument_key"]
+    logger.info(f"Downloading instrument list from: {complete_instru_list}")
+    try:
+        response = requests.get(complete_instru_list, timeout=30)
+        response.raise_for_status()
 
-        return matches.iloc[0]["instrument_key"]
+        decompressed_data = gzip.decompress(response.content)
+        instrument_data = json.loads(decompressed_data.decode('utf-8'))
 
-    def search_instruments(
-        self,
-        query: str,
-        exchange: Optional[str] = None,
-        instrument_type: Optional[str] = None,
-    ) -> pd.DataFrame:
-        """
-        Search instruments by partial symbol or name match.
+        with open(INSTRUMENT_DATA_FILE, 'w') as f:
+            json.dump(instrument_data, f, indent=2)
 
-        Useful when you're not sure of the exact symbol.
-
-        Args:
-            query (str): Partial symbol or name to search.
-            exchange (str, optional): Filter by exchange. e.g. "NSE_EQ"
-            instrument_type (str, optional): Filter by type. e.g. "EQ", "FUT", "OPT"
-
-        Returns:
-            pd.DataFrame: Matching instruments.
-
-        Example:
-            df = instrument_manager.search_instruments("TATA", exchange="NSE_EQ")
-        """
-        self._load_or_refresh()
-
-        mask = (
-            self._instruments["trading_symbol"].str.contains(query, case=False, na=False) |
-            self._instruments["name"].str.contains(query, case=False, na=False)
+        logger.info(
+            f"Instrument list downloaded and saved to: {INSTRUMENT_DATA_FILE} "
+            f"({len(instrument_data):,} instruments)"
         )
-        results = self._instruments[mask].copy()
+        return instrument_data
 
-        if exchange:
-            results = results[results["exchange"].str.upper() == exchange.upper()]
+    except Exception as e:
+        logger.error(f"Error downloading instrument list: {e}")
+        if INSTRUMENT_DATA_FILE.exists():
+            logger.warning("Download failed. Using local cache as fallback.")
+            with open(INSTRUMENT_DATA_FILE, 'r') as f:
+                return json.load(f)
+        raise
 
-        if instrument_type:
-            results = results[
-                results["instrument_type"].str.upper() == instrument_type.upper()
-            ]
 
-        return results[["instrument_key", "exchange", "trading_symbol",
-                         "name", "instrument_type", "lot_size", "expiry"]].head(20)
+# ---------------------------------------------------------------------------
+# Lookup
+# ---------------------------------------------------------------------------
 
-    def get_nse_equity_instruments(self) -> pd.DataFrame:
-        """
-        Return all NSE equity instruments (EQ segment only).
-        This is the base universe for your NSE 500 screener.
+def get_instrument_key(
+    instrument_type: str,
+    exchange: str,
+    trading_symbol: str,
+    option_type: Optional[str] = None,
+    expiry: Optional[str] = None,
+    strike: Optional[float] = None
+) -> str:
+    """
+    Get the Upstox instrument_key for any tradeable security.
 
-        Returns:
-            pd.DataFrame: NSE_EQ instruments.
-        """
-        self._load_or_refresh()
+    Logic is identical to instrument_key.py from the project.
+    Only print() calls have been replaced with logger calls.
 
-        mask = (
-            (self._instruments["exchange"] == "NSE_EQ") &
-            (self._instruments["instrument_type"] == "EQ")
+    Args:
+        instrument_type (str): Type of instrument (case-insensitive).
+                               e.g. "EQUITY", "FUTSTK", "OPTIDX"
+        exchange (str):        Exchange - NSE, BSE, MCX (case-insensitive).
+        trading_symbol (str):  Symbol or underlying (case-insensitive).
+                               e.g. "INFY", "NIFTY", "RELIANCE"
+        option_type (str):     For options only - "CE" or "PE".
+        expiry (str):          For F&O - date in DDMONYY format.
+                               e.g. "27MAR26", "24APR26"
+        strike (float):        For options only - strike price.
+
+    Returns:
+        str: Upstox instrument_key. e.g. "NSE_EQ|INE009A01021"
+
+    Raises:
+        ValueError: If required parameters are missing or instrument not found.
+    """
+
+    # Segment search strategy mapping (unchanged from instrument_key.py)
+    segment_search_strategy = {
+        'EQUITY': [
+            {'segments': ['NSE_EQ', 'BSE_EQ'], 'data_instr_type': None, 'asset_type': None}
+        ],
+        'INDEX': [
+            {'segments': ['NSE_INDEX', 'BSE_INDEX'], 'data_instr_type': 'INDEX', 'asset_type': None}
+        ],
+        'FUTSTK': [
+            {'segments': ['NSE_FO', 'BSE_FO'], 'data_instr_type': 'FUT', 'asset_type': 'EQUITY'}
+        ],
+        'FUTIDX': [
+            {'segments': ['NSE_FO', 'BSE_FO'], 'data_instr_type': 'FUT', 'asset_type': 'INDEX'}
+        ],
+        'FUTCOM': [
+            {'segments': ['MCX_FO', 'NSE_COM'], 'data_instr_type': 'FUT', 'asset_type': 'COM'}
+        ],
+        'FUTCUR': [
+            {'segments': ['NCD_FO', 'BCD_FO'], 'data_instr_type': 'FUT', 'asset_type': 'CUR'}
+        ],
+        'FUTIRT': [
+            {'segments': ['BCD_FO'], 'data_instr_type': 'FUT', 'asset_type': 'IRD'}
+        ],
+        'OPTSTK': [
+            {'segments': ['NSE_FO', 'BSE_FO'], 'data_instr_type': ['CE', 'PE'], 'asset_type': 'EQUITY'}
+        ],
+        'OPTIDX': [
+            {'segments': ['NSE_FO', 'BSE_FO'], 'data_instr_type': ['CE', 'PE'], 'asset_type': 'INDEX'}
+        ],
+        'OPTCOM': [
+            {'segments': ['NSE_COM', 'MCX_FO'], 'data_instr_type': ['CE', 'PE'], 'asset_type': 'COM'}
+        ],
+        'OPTCUR': [
+            {'segments': ['NCD_FO', 'BCD_FO'], 'data_instr_type': ['CE', 'PE'], 'asset_type': 'CUR'}
+        ],
+        'OPTIRD': [
+            {'segments': ['BCD_FO'], 'data_instr_type': ['CE', 'PE'], 'asset_type': 'IRD'}
+        ]
+    }
+
+    # Segment -> exchange mapping (handles edge cases like NCD_FO)
+    segment_exchange_map = {
+        'NSE_EQ': 'NSE', 'BSE_EQ': 'BSE',
+        'NSE_INDEX': 'NSE', 'BSE_INDEX': 'BSE',
+        'NSE_FO': 'NSE', 'BSE_FO': 'BSE',
+        'MCX_FO': 'MCX',
+        'NSE_COM': 'NSE',
+        'NCD_FO': 'NSE',   # Special case: segment=NCD_FO but exchange=NSE
+        'BCD_FO': 'BSE'    # Special case: segment=BCD_FO but exchange=BSE
+    }
+
+    # Download / load instrument data
+    instrument_data = download_and_save_instrument_list()
+
+    # Normalise inputs
+    instrument_type = instrument_type.upper().strip()
+    exchange        = exchange.upper().strip()
+    trading_symbol  = trading_symbol.upper().strip()
+
+    if option_type:
+        option_type = option_type.upper().strip()
+    if expiry:
+        expiry = expiry.upper().strip()
+    if strike is not None:
+        strike = float(strike)
+
+    # Validate instrument type
+    if instrument_type not in segment_search_strategy:
+        raise ValueError(
+            f"Unknown instrument type: {instrument_type}. "
+            f"Supported types: {', '.join(segment_search_strategy.keys())}"
         )
-        return self._instruments[mask].copy()
 
-    def get_fo_instruments(
-        self,
-        instrument_type: Optional[str] = None,
-        expiry_date: Optional[str] = None,
-    ) -> pd.DataFrame:
-        """
-        Return NSE F&O instruments.
+    # Validate required parameters for options
+    if instrument_type in ['OPTSTK', 'OPTIDX', 'OPTCUR', 'OPTCOM', 'OPTIRT']:
+        if not option_type or not expiry or strike is None:
+            raise ValueError(
+                f"For {instrument_type}, option_type, expiry, and strike are required. "
+                f"Received: option_type={option_type}, expiry={expiry}, strike={strike}"
+            )
 
-        Args:
-            instrument_type (str, optional): "FUT" for futures, "OPT" for options.
-                                              None returns all F&O.
-            expiry_date (str, optional): Filter by expiry date "YYYY-MM-DD".
+    # Validate required parameters for futures
+    if instrument_type in ['FUTSTK', 'FUTIDX', 'FUTCOM', 'FUTCUR', 'FUTIRT']:
+        if not expiry:
+            raise ValueError(f"Expiry is required for {instrument_type}")
 
-        Returns:
-            pd.DataFrame: Matching F&O instruments.
-        """
-        self._load_or_refresh()
+    search_strategies = segment_search_strategy[instrument_type]
 
-        mask = self._instruments["exchange"] == "NSE_FO"
-        results = self._instruments[mask].copy()
+    # Helper: convert DDMONYY expiry string to millisecond timestamp range
+    def get_expiry_timestamp_range(expiry_str: str):
+        try:
+            date_obj = datetime.strptime(expiry_str, '%d%b%y')
+            timestamp_ms = int(date_obj.timestamp() * 1000)
+            # 1 hour before to 24 hours after midnight of expiry date
+            return timestamp_ms - 3600000, timestamp_ms + 86400000
+        except ValueError:
+            return None, None
 
-        if instrument_type:
-            results = results[
-                results["instrument_type"].str.upper() == instrument_type.upper()
-            ]
+    # Search loop (unchanged from instrument_key.py)
+    for strategy in search_strategies:
+        segments_to_search = strategy['segments']
+        data_instr_types   = strategy['data_instr_type']
+        asset_type_filter  = strategy['asset_type']
 
-        if expiry_date:
-            results = results[results["expiry"] == expiry_date]
+        # Normalise data_instr_types to list for consistent handling
+        if data_instr_types is None:
+            data_instr_types = [None]
+        elif isinstance(data_instr_types, str):
+            data_instr_types = [data_instr_types]
+        elif not isinstance(data_instr_types, list):
+            data_instr_types = [data_instr_types]
 
-        return results
+        for instrument in instrument_data:
 
-    def get_index_instrument_key(self, index_name: str) -> Optional[str]:
-        """
-        Get the instrument key for major NSE indices.
+            # Filter by segment
+            if instrument.get('segment') not in segments_to_search:
+                continue
 
-        Args:
-            index_name (str): Index name. Common values:
-                              "NIFTY 50", "NIFTY BANK", "NIFTY 500",
-                              "NIFTY MIDCAP 100", etc.
+            # Verify exchange matches expected exchange for this segment
+            expected_exchange = segment_exchange_map.get(instrument.get('segment'))
+            if expected_exchange != exchange:
+                continue
 
-        Returns:
-            str: instrument_key if found, None otherwise.
-        """
-        self._load_or_refresh()
+            # Filter by instrument_type field (EQ, FUT, CE, PE, INDEX)
+            instr_type = instrument.get('instrument_type', '').upper()
+            if data_instr_types != [None]:
+                if instr_type not in data_instr_types:
+                    continue
 
-        # Indices are in NSE_INDEX segment
-        mask = (
-            (self._instruments["exchange"].str.contains("INDEX", case=False, na=False)) &
-            (self._instruments["trading_symbol"].str.upper() == index_name.upper())
-        )
-        matches = self._instruments[mask]
+            # Filter by asset_type (EQUITY, INDEX, COM, CUR, IRD)
+            if asset_type_filter:
+                if instrument.get('asset_type') != asset_type_filter:
+                    continue
 
-        if matches.empty:
-            # Try broader name search
-            mask2 = self._instruments["name"].str.upper() == index_name.upper()
-            matches = self._instruments[mask2]
+            # EQUITY / INDEX: match trading_symbol directly
+            if instrument_type in ['EQUITY', 'INDEX']:
+                if instrument.get('trading_symbol', '').upper() == trading_symbol:
+                    key = instrument.get('instrument_key', '')
+                    logger.info(
+                        f"Found {instrument_type}: {trading_symbol} -> {key}"
+                    )
+                    return key
 
-        if matches.empty:
-            logger.warning(f"Index not found: '{index_name}'")
-            return None
+            # FUTURES: match asset_symbol + expiry timestamp
+            elif instrument_type in ['FUTSTK', 'FUTIDX', 'FUTCOM', 'FUTCUR', 'FUTIRT']:
+                asset_sym = instrument.get('asset_symbol', '').upper()
 
-        return matches.iloc[0]["instrument_key"]
+                if trading_symbol != asset_sym:
+                    continue
 
-    def get_lot_size(self, instrument_key: str) -> int:
-        """
-        Get the lot size for an F&O instrument.
-        Required for position sizing in F&O strategies.
+                exp_min, exp_max = get_expiry_timestamp_range(expiry)
+                if exp_min is None:
+                    raise ValueError(
+                        f"Invalid expiry format: {expiry}. "
+                        "Use format: DDMONYY (e.g., 24FEB26)"
+                    )
 
-        Args:
-            instrument_key (str): Upstox instrument key.
+                instr_expiry = instrument.get('expiry', 0)
+                if isinstance(instr_expiry, (int, float)):
+                    if exp_min <= instr_expiry <= exp_max:
+                        key = instrument.get('instrument_key', '')
+                        logger.info(
+                            f"Found {instrument_type}: "
+                            f"{trading_symbol} expiry={expiry} -> {key}"
+                        )
+                        return key
 
-        Returns:
-            int: Lot size. Returns 1 for equities (no lot concept).
-        """
-        self._load_or_refresh()
+            # OPTIONS: match asset_symbol + option_type + strike + expiry
+            elif instrument_type in ['OPTSTK', 'OPTIDX', 'OPTCOM', 'OPTCUR', 'OPTIRD']:
+                # option_type (CE/PE) stored in instrument_type field of the JSON data
+                instr_option_type = instrument.get('instrument_type', '').upper()
+                if instr_option_type != option_type:
+                    continue
 
-        mask = self._instruments["instrument_key"] == instrument_key
-        matches = self._instruments[mask]
+                asset_sym = instrument.get('asset_symbol', '').upper()
+                if trading_symbol != asset_sym:
+                    continue
 
-        if matches.empty:
-            logger.warning(f"Instrument not found for lot size: {instrument_key}")
-            return 1
+                # Strike price with floating-point tolerance
+                strike_price = instrument.get('strike_price', 0)
+                if abs(float(strike_price) - float(strike)) > 0.01:
+                    continue
 
-        lot_size = matches.iloc[0].get("lot_size", 1)
-        return int(lot_size) if pd.notna(lot_size) else 1
+                exp_min, exp_max = get_expiry_timestamp_range(expiry)
+                if exp_min is None:
+                    raise ValueError(
+                        f"Invalid expiry format: {expiry}. "
+                        "Use format: DDMONYY (e.g., 24FEB26)"
+                    )
 
+                instr_expiry = instrument.get('expiry', 0)
+                if isinstance(instr_expiry, (int, float)):
+                    if exp_min <= instr_expiry <= exp_max:
+                        key = instrument.get('instrument_key', '')
+                        logger.info(
+                            f"Found {instrument_type}: {trading_symbol} "
+                            f"{option_type} strike={strike} expiry={expiry} -> {key}"
+                        )
+                        return key
 
-# ── Module-level singleton ────────────────────────────────────────────────────
-instrument_manager = InstrumentManager()
+    # Nothing found — build a helpful error message
+    searched_segments = []
+    for strategy in search_strategies:
+        searched_segments.extend(strategy['segments'])
+
+    raise ValueError(
+        f"No {instrument_type} found for {trading_symbol} on {exchange}. "
+        f"Searched segments: {searched_segments}. "
+        f"Additional filters: expiry={expiry}, strike={strike}, option_type={option_type}"
+    )
