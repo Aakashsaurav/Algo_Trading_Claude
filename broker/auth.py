@@ -110,7 +110,7 @@ class AuthManager:
         print("1. Your browser should have opened the Upstox login page.")
         print("2. Log in with your Upstox credentials.")
         print("3. After login, you'll be redirected to a URL like:")
-        print("   http://127.0.0.1:8000/callback?code=XXXXX")
+        print("   http://127.0.0.1:5000?code=XXXXX")
         print("4. Copy that full URL (or just the code value) and")
         print("   call: auth.generate_token_from_url('<paste here>')")
         print("=" * 60 + "\n")

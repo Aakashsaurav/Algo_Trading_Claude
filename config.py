@@ -50,7 +50,7 @@ class AppConfig:
     # --- Upstox API Credentials ---
     API_KEY: str = _require("UPSTOX_API_KEY")
     API_SECRET: str = _require("UPSTOX_API_SECRET")
-    REDIRECT_URI: str = os.getenv("UPSTOX_REDIRECT_URI", "http://127.0.0.1:8000/callback")
+    REDIRECT_URI: str = os.getenv("UPSTOX_REDIRECT_URI", "https://127.0.0.1:5000/")
 
     # Upstox API base URLs (v2)
     BASE_URL: str = "https://api.upstox.com"
