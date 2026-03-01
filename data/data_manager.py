@@ -1,6 +1,12 @@
 """
 data/data_manager.py
 ---------------------
+
+For future development:
+Call from Jan 2020 or Jan 2000 should not be made while trying to access options and futures data.
+Options and futures data have their own starting date.
+This will reduce number of API calls.
+
 Single entry point for all OHLCV data needs — downloading, caching, updating,
 and returning resampled candles for any instrument and timeframe.
 
