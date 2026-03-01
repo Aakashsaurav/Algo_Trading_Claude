@@ -15,6 +15,8 @@ pyarrow==14.0.2               # Parquet read/write (fast columnar storage)
 # --- Web Framework (Backend API) ---
 fastapi==0.109.0              # API server for the dashboard
 uvicorn==0.27.0               # ASGI server to run FastAPI
+flask 
+pyopenssl
 
 # --- Scheduling ---
 APScheduler==3.10.4           # Run jobs at market open/close, EOD updates
@@ -27,7 +29,7 @@ sqlalchemy==2.0.25            # ORM for SQLite / PostgreSQL
 
 # --- Testing ---
 pytest==7.4.4                 # Test framework
-pytest-mock==3.12.2           # Mock objects for testing API calls
+pytest-mock==3.14.0           # Mock objects for testing API calls
 
 # --- Notifications (set up in Phase 7) ---
 python-telegram-bot==20.7     # Telegram alerts
