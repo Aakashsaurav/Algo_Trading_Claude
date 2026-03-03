@@ -33,7 +33,7 @@ from typing import Optional
 import pandas as pd
 
 from broker.market_data import market_data
-from broker.instrument_manager import instrument_manager
+from broker.upstox.instrument_manager import instrument_manager
 from data.parquet_store import parquet_store
 
 logger = logging.getLogger(__name__)
