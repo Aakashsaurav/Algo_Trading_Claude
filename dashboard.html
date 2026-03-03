@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlgoDesk — Trading System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ── Design Language: Terminal-Inspired Fintech ──────────────────────────
+     Monospaced type, data-dense grid, dark base with amber accent.
+     Every element feels precise, trustworthy, fast. ───────────────────── */
+  :root {
+    --bg:          #0a0c10;
+    --surface:     #111318;
+    --surface-2:   #181c24;
+    --surface-3:   #1e232e;
+    --border:      #252b38;
+    --border-2:    #2e3545;
+    --text:        #d4dae8;
+    --text-2:      #8892a4;
+    --text-3:      #5a6378;
+    --accent:      #f0a500;
+    --accent-dim:  #b87d0040;
+    --accent-glow: #f0a50022;
+    --green:       #2ecf7e;
+    --green-dim:   #2ecf7e22;
+    --red:         #f05060;
+    --red-dim:     #f0506022;
+    --blue:        #4fa3e8;
+    --blue-dim:    #4fa3e822;
+    --purple:      #9d6eff;
+    --mono:        'IBM Plex Mono', monospace;
+    --sans:        'IBM Plex Sans', sans-serif;
+    --r:           6px;
+    --r2:          10px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── Typography ───────────────────────────────────────────────────────── */
+  h1,h2,h3 { font-family: var(--mono); letter-spacing: -0.02em; }
+  .mono  { font-family: var(--mono); }
+  .dim   { color: var(--text-2); }
+  .muted { color: var(--text-3); }
+  .pos   { color: var(--green); }
+  .neg   { color: var(--red); }
+  .acc   { color: var(--accent); }
+
+  /* ── Layout ───────────────────────────────────────────────────────────── */
+  .layout { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── Sidebar ──────────────────────────────────────────────────────────── */
+  .sidebar {
+    width: 220px; min-width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 0;
+    z-index: 100;
+  }
+  .sidebar-brand {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand-name {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: -0.03em;
+  }
+  .brand-tag {
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+  }
+  .nav { flex: 1; padding: 12px 0; }
+  .nav-group-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-3);
+    padding: 12px 16px 4px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 16px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    color: var(--text-2);
+    font-size: 13px;
+    transition: all 0.12s;
+  }
+  .nav-item:hover { background: var(--surface-2); color: var(--text); }
+  .nav-item.active {
+    background: var(--accent-glow);
+    border-left-color: var(--accent);
+    color: var(--accent);
+  }
+  .nav-item .icon { font-size: 15px; width: 18px; text-align: center; }
+  .sidebar-status {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .status-dot {
+    display: inline-block; width: 7px; height: 7px;
+    border-radius: 50%; margin-right: 6px;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+  }
+
+  /* ── Main content ─────────────────────────────────────────────────────── */
+  .main {
+    flex: 1; overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .topbar {
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-title { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+  .topbar-meta { font-size: 11px; color: var(--text-3); font-family: var(--mono); }
+  .content { padding: 24px; flex: 1; }
+
+  /* ── Panels ───────────────────────────────────────────────────────────── */
+  .panel {
+    display: none;
+    animation: fadeIn 0.2s ease;
+  }
+  .panel.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ── Cards ────────────────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-2);
+  }
+  .card-badge {
+    font-size: 10px; font-family: var(--mono);
+    padding: 2px 8px; border-radius: 3px;
+    background: var(--surface-3); color: var(--text-3);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Grid layouts ─────────────────────────────────────────────────────── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-form { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px 20px; }
+
+  /* ── Form Controls ────────────────────────────────────────────────────── */
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--text-3); font-family: var(--mono);
+  }
+  input, select, textarea {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 10px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+  }
+  select option { background: var(--surface-3); }
+  .toggle-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 0;
+  }
+  .toggle-label { font-size: 12px; color: var(--text-2); }
+  input[type="checkbox"] {
+    width: 14px; height: 14px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* ── Buttons ──────────────────────────────────────────────────────────── */
+  .btn {
+    font-family: var(--mono);
+    font-size: 12px; font-weight: 500;
+    padding: 9px 18px;
+    border-radius: var(--r);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { background: #ffc040; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    background: var(--surface-3);
+    color: var(--text-2);
+    border-color: var(--border-2);
+  }
+  .btn-secondary:hover { background: var(--surface-2); color: var(--text); }
+  .btn-danger { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+  .btn-row { display: flex; gap: 10px; align-items: center; margin-top: 16px; }
+
+  /* ── Metric chips ─────────────────────────────────────────────────────── */
+  .metric-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+  }
+  .metric-chip {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 10px 12px;
+  }
+  .metric-chip .label {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-3); font-family: var(--mono); margin-bottom: 4px;
+  }
+  .metric-chip .value {
+    font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--text);
+  }
+  .metric-chip.green  { border-color: #2ecf7e55; background: var(--green-dim); }
+  .metric-chip.red    { border-color: #f0506055; background: var(--red-dim); }
+  .metric-chip.amber  { border-color: #f0a50055; background: var(--accent-glow); }
+  .metric-chip.blue   { border-color: #4fa3e855; background: var(--blue-dim); }
+
+  /* ── Tables ───────────────────────────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--border); }
+  table {
+    width: 100%; border-collapse: collapse;
+    font-family: var(--mono); font-size: 11px;
+  }
+  thead tr { background: var(--surface-3); }
+  th {
+    padding: 8px 12px; text-align: left;
+    font-weight: 500; font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--text-3);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    color: var(--text-2);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface-2); color: var(--text); }
+  .td-pos { color: var(--green); }
+  .td-neg { color: var(--red); }
+
+  /* ── Chart Container ──────────────────────────────────────────────────── */
+  .chart-container {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    overflow: hidden;
+    min-height: 400px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .chart-placeholder {
+    color: var(--text-3); font-family: var(--mono); font-size: 12px;
+    text-align: center; padding: 60px;
+  }
+  .chart-container img {
+    width: 100%; height: auto;
+    display: block;
+  }
+
+  /* ── Equity mini-chart using CSS ──────────────────────────────────────── */
+  .sparkline-wrap {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px;
+    height: 60px;
+  }
+
+  /* ── Loading spinner ──────────────────────────────────────────────────── */
+  .loader {
+    display: none; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 12px; color: var(--text-3);
+    padding: 12px 0;
+  }
+  .loader.show { display: flex; }
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border-2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Alerts ───────────────────────────────────────────────────────────── */
+  .alert {
+    padding: 10px 14px; border-radius: var(--r);
+    font-family: var(--mono); font-size: 11px; margin-bottom: 12px;
+    display: none;
+  }
+  .alert.show { display: block; }
+  .alert-error { background: var(--red-dim); border: 1px solid var(--red); color: var(--red); }
+  .alert-success { background: var(--green-dim); border: 1px solid var(--green); color: var(--green); }
+  .alert-info { background: var(--blue-dim); border: 1px solid var(--blue); color: var(--blue); }
+
+  /* ── Parameter grid (optimizer) ───────────────────────────────────────── */
+  .param-range { display: flex; gap: 8px; align-items: center; }
+  .param-range .sep { color: var(--text-3); font-family: var(--mono); font-size: 11px; }
+  .param-tag {
+    display: inline-block; padding: 2px 8px;
+    background: var(--surface-3); border: 1px solid var(--border-2);
+    border-radius: 3px; font-family: var(--mono); font-size: 10px;
+    color: var(--accent); margin: 2px;
+  }
+
+  /* ── Screener badges ──────────────────────────────────────────────────── */
+  .signal-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 3px; font-size: 10px;
+    font-family: var(--mono); font-weight: 600;
+  }
+  .signal-buy  { background: var(--green-dim); color: var(--green); border: 1px solid #2ecf7e44; }
+  .signal-sell { background: var(--red-dim);   color: var(--red);   border: 1px solid #f0506044; }
+
+  /* ── Results section separator ────────────────────────────────────────── */
+  .section-divider {
+    border: none; border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+
+  /* ── Scrollbar styling ────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+
+  /* ── Responsive ───────────────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .grid-form { grid-template-columns: 1fr 1fr; }
+    .grid-3    { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .sidebar { width: 52px; min-width: 52px; }
+    .sidebar .nav-item span { display: none; }
+    .sidebar .brand-name { display: none; }
+    .grid-form { grid-template-columns: 1fr; }
+    .grid-2    { grid-template-columns: 1fr; }
+  }
+
+  /* ── Compact canvas chart (simple equity curve) ────────────────────────── */
+  canvas { display: block; border-radius: var(--r); }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ════════ SIDEBAR ════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-name">AlgoDesk</div>
+      <div class="brand-tag">v2.0 · NSE / BSE</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group-label">Analysis</div>
+      <div class="nav-item active" onclick="showPanel('backtester')">
+        <span class="icon">📊</span><span>Backtester</span>
+      </div>
+      <div class="nav-item" onclick="showPanel('optimizer')">
+        <span class="icon">⚡</span><span>Optimizer</span>
+      </div>
+      <div class="nav-group-label">Discovery</div>
+      <div class="nav-item" onclick="showPanel('screener')">
+        <span class="icon">🔍</span><span>Screener</span>
+      </div>
+      <div class="nav-group-label">Outputs</div>
+      <div class="nav-item" onclick="showPanel('results')">
+        <span class="icon">📁</span><span>Results</span>
+      </div>
+      <div class="nav-item" onclick="showPanel('docs')">
+        <span class="icon">📖</span><span>Guide</span>
+      </div>
+    </nav>
+    <div class="sidebar-status">
+      <span class="status-dot"></span><span class="dim" style="font-size:10px">API Connected</span>
+    </div>
+  </aside>
+
+  <!-- ════════ MAIN CONTENT ════════ -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">Backtester</div>
+      <div class="topbar-meta" id="topbar-meta">NSE · Paper Trading Mode</div>
+    </div>
+
+    <div class="content">
+
+      <!-- ══════════════════════════════════════════
+           PANEL 1 — BACKTESTER
+      ══════════════════════════════════════════ -->
+      <div id="panel-backtester" class="panel active">
+
+        <!-- Config Card -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Strategy Configuration</span>
+            <span class="card-badge" id="strategy-category-badge">Trend Following</span>
+          </div>
+
+          <div class="grid-form">
+            <div class="form-group">
+              <label class="form-label">Symbol</label>
+              <input id="bt-symbol" value="INFY" placeholder="e.g. RELIANCE">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Strategy</label>
+              <select id="bt-strategy" onchange="onStrategyChange()">
+                <option value="EMACrossover">EMA Crossover</option>
+                <option value="RSIMeanReversion">RSI Mean Reversion</option>
+                <option value="BollingerBandStrategy">Bollinger Band</option>
+                <option value="MACDStrategy">MACD</option>
+                <option value="SupertrendStrategy">Supertrend</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Timeframe</label>
+              <select id="bt-timeframe">
+                <option value="daily">Daily</option>
+                <option value="minute">1-Minute</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">From Date</label>
+              <input id="bt-from" type="date" value="2020-01-01">
+            </div>
+            <div class="form-group">
+              <label class="form-label">To Date</label>
+              <input id="bt-to" type="date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Initial Capital (₹)</label>
+              <input id="bt-capital" type="number" value="500000" step="50000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Segment</label>
+              <select id="bt-segment">
+                <option>EQUITY_DELIVERY</option>
+                <option>EQUITY_INTRADAY</option>
+                <option>EQUITY_FUTURES</option>
+                <option>EQUITY_OPTIONS</option>
+                <option>COMMODITY_FUTURES</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Order Type</label>
+              <select id="bt-order-type">
+                <option value="MARKET">Market (next open)</option>
+                <option value="LIMIT">Limit Order</option>
+                <option value="STOP">Stop Order</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Positions</label>
+              <input id="bt-maxpos" type="number" value="5" min="1" max="50">
+            </div>
+          </div>
+
+          <!-- Strategy-specific parameters (dynamic) -->
+          <div id="strategy-params" style="margin-top:14px;">
+            <div class="grid-form" id="strategy-params-grid"></div>
+          </div>
+
+          <!-- Advanced Options -->
+          <details style="margin-top:12px;">
+            <summary style="cursor:pointer; color:var(--text-3); font-size:11px; font-family:var(--mono); user-select:none; padding: 8px 0;">
+              ▶ Advanced Risk & Order Options
+            </summary>
+            <div class="grid-form" style="margin-top:12px;">
+              <div class="form-group">
+                <label class="form-label">Stop-Loss % (0 = off)</label>
+                <input id="bt-stoploss" type="number" value="0" step="0.5" min="0">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Trailing Stop % (0 = off)</label>
+                <input id="bt-trailing" type="number" value="0" step="0.5" min="0">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Capital Risk % per Trade</label>
+                <input id="bt-risk" type="number" value="2" step="0.5" min="0.5" max="10">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Lot Size (1 = equity)</label>
+                <input id="bt-lot" type="number" value="1" min="1">
+              </div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:20px; flex-wrap:wrap;">
+              <label class="toggle-row">
+                <input type="checkbox" id="bt-short"> <span class="toggle-label">Allow Shorting</span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" id="bt-intraday"> <span class="toggle-label">Intraday Squareoff (15:20)</span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" id="bt-trailing-enable"> <span class="toggle-label">Enable Trailing Stop</span>
+              </label>
+            </div>
+            <div style="margin-top:12px;">
+              <div class="form-label" style="margin-bottom:8px;">Save Outputs</div>
+              <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                <label class="toggle-row">
+                  <input type="checkbox" id="bt-save-chart" checked> <span class="toggle-label">Chart (PNG)</span>
+                </label>
+                <label class="toggle-row">
+                  <input type="checkbox" id="bt-save-trades"> <span class="toggle-label">Trade Log (CSV)</span>
+                </label>
+                <label class="toggle-row">
+                  <input type="checkbox" id="bt-save-raw"> <span class="toggle-label">Raw Data (CSV)</span>
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="runBacktest()">
+              <span>▶</span> Run Backtest
+            </button>
+            <button class="btn btn-secondary" onclick="clearBacktestResults()">Clear</button>
+            <div class="loader" id="bt-loader">
+              <div class="spinner"></div> Running strategy…
+            </div>
+          </div>
+        </div>
+
+        <!-- Alert -->
+        <div class="alert" id="bt-alert"></div>
+
+        <!-- Results -->
+        <div id="bt-results" style="display:none;">
+
+          <!-- Metric chips -->
+          <div class="metric-grid" id="bt-metrics"></div>
+
+          <!-- Chart -->
+          <div class="card" style="padding:0; overflow:hidden;">
+            <div class="card-header" style="padding: 14px 18px 10px;">
+              <span class="card-title">Backtest Chart</span>
+              <a id="bt-chart-download" href="#" download class="btn btn-secondary" style="padding:5px 12px; font-size:10px;">↓ PNG</a>
+            </div>
+            <div class="chart-container" id="bt-chart-container">
+              <div class="chart-placeholder">Chart will appear after running backtest.</div>
+            </div>
+          </div>
+
+          <!-- Equity curve mini-chart -->
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><span class="card-title">Equity Curve</span></div>
+              <canvas id="equity-canvas" height="120"></canvas>
+            </div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">Drawdown</span></div>
+              <canvas id="dd-canvas" height="120"></canvas>
+            </div>
+          </div>
+
+          <!-- Trade log -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Trade Log</span>
+              <span class="card-badge" id="bt-trade-count">0 trades</span>
+            </div>
+            <div class="table-wrap">
+              <table id="bt-trade-table">
+                <thead>
+                  <tr>
+                    <th>#</th><th>Direction</th><th>Entry Time</th><th>Entry ₹</th>
+                    <th>Exit Time</th><th>Exit ₹</th><th>Qty</th>
+                    <th>Gross P&L</th><th>Charges</th><th>Net P&L</th>
+                    <th>P&L %</th><th>Exit Reason</th><th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody id="bt-trade-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div><!-- /bt-results -->
+      </div><!-- /panel-backtester -->
+
+
+      <!-- ══════════════════════════════════════════
+           PANEL 2 — OPTIMIZER
+      ══════════════════════════════════════════ -->
+      <div id="panel-optimizer" class="panel">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Parameter Optimizer</span>
+            <span class="card-badge">Grid · Random</span>
+          </div>
+          <p class="dim" style="font-size:12px; margin-bottom:16px; line-height:1.6;">
+            Find the best parameter combination for a strategy on a symbol.
+            Grid search tests ALL combinations. Random search is faster for large grids.
+          </p>
+          <div class="grid-form">
+            <div class="form-group">
+              <label class="form-label">Symbol</label>
+              <input id="opt-symbol" value="INFY">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Strategy</label>
+              <select id="opt-strategy">
+                <option value="EMACrossover">EMA Crossover</option>
+                <option value="RSIMeanReversion">RSI Mean Reversion</option>
+                <option value="BollingerBandStrategy">Bollinger Band</option>
+                <option value="MACDStrategy">MACD</option>
+                <option value="SupertrendStrategy">Supertrend</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Optimise For</label>
+              <select id="opt-metric">
+                <option>Sharpe Ratio</option>
+                <option>Total Return</option>
+                <option>Profit Factor</option>
+                <option>Win Rate</option>
+                <option>Max Drawdown</option>
+                <option>CAGR</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Method</label>
+              <select id="opt-method">
+                <option value="grid">Grid Search (exhaustive)</option>
+                <option value="random">Random Search (fast)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Random Trials (if random)</label>
+              <input id="opt-nrandom" type="number" value="30" min="10" max="200">
+            </div>
+            <div class="form-group">
+              <label class="form-label">From Date</label>
+              <input id="opt-from" type="date" value="2020-01-01">
+            </div>
+          </div>
+
+          <!-- Parameter ranges -->
+          <div style="margin-top:16px;">
+            <div class="form-label" style="margin-bottom:10px;">Parameter Grid (comma-separated values per parameter)</div>
+            <div id="opt-param-rows">
+              <div class="param-grid-row" style="display:flex; gap:10px; margin-bottom:8px; align-items:center;">
+                <input style="width:140px;" placeholder="param_name" class="opt-param-name" value="fast_period">
+                <span class="sep">→</span>
+                <input style="flex:1;" placeholder="e.g. 5,9,13,21" class="opt-param-values" value="5,9,13">
+                <button class="btn btn-secondary" style="padding:5px 10px;" onclick="removeParamRow(this)">✕</button>
+              </div>
+              <div class="param-grid-row" style="display:flex; gap:10px; margin-bottom:8px; align-items:center;">
+                <input style="width:140px;" placeholder="param_name" class="opt-param-name" value="slow_period">
+                <span class="sep">→</span>
+                <input style="flex:1;" placeholder="e.g. 21,34,50" class="opt-param-values" value="21,34,50">
+                <button class="btn btn-secondary" style="padding:5px 10px;" onclick="removeParamRow(this)">✕</button>
+              </div>
+            </div>
+            <button class="btn btn-secondary" onclick="addParamRow()" style="margin-top:4px; font-size:11px;">
+              + Add Parameter
+            </button>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="runOptimizer()">⚡ Run Optimizer</button>
+            <div class="loader" id="opt-loader">
+              <div class="spinner"></div> Optimizing…
+            </div>
+          </div>
+        </div>
+
+        <div class="alert" id="opt-alert"></div>
+
+        <div id="opt-results" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Optimization Results</span>
+              <span class="card-badge" id="opt-count"></span>
+            </div>
+            <div class="table-wrap">
+              <table id="opt-table">
+                <thead><tr id="opt-thead"></tr></thead>
+                <tbody id="opt-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div><!-- /panel-optimizer -->
+
+
+      <!-- ══════════════════════════════════════════
+           PANEL 3 — SCREENER
+      ══════════════════════════════════════════ -->
+      <div id="panel-screener" class="panel">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Signal Screener</span>
+            <span class="card-badge">Nifty 500 · F&O Universe</span>
+          </div>
+          <p class="dim" style="font-size:12px; margin-bottom:16px; line-height:1.6;">
+            Scan all available symbols daily and return stocks generating strategy signals.
+          </p>
+          <div class="grid-form">
+            <div class="form-group">
+              <label class="form-label">Strategy</label>
+              <select id="sc-strategy">
+                <option value="EMACrossover">EMA Crossover</option>
+                <option value="RSIMeanReversion">RSI Mean Reversion</option>
+                <option value="BollingerBandStrategy">Bollinger Band</option>
+                <option value="MACDStrategy">MACD</option>
+                <option value="SupertrendStrategy">Supertrend</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Signal Type</label>
+              <select id="sc-signal">
+                <option value="1">Buy Signals Only (+1)</option>
+                <option value="-1">Sell Signals Only (-1)</option>
+                <option value="0">Both Buy & Sell</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Min Avg Volume</label>
+              <input id="sc-volume" type="number" value="200000" step="50000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Min Price (₹)</label>
+              <input id="sc-minprice" type="number" value="50">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Results</label>
+              <input id="sc-maxresults" type="number" value="30" min="5" max="200">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Rank By</label>
+              <input id="sc-rankby" value="close" placeholder="e.g. rsi, close, volume">
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="runScreener()">🔍 Scan Universe</button>
+            <div class="loader" id="sc-loader">
+              <div class="spinner"></div> Scanning…
+            </div>
+          </div>
+        </div>
+
+        <div class="alert" id="sc-alert"></div>
+
+        <div id="sc-results" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Screener Hits</span>
+              <span class="card-badge" id="sc-count">0 found</span>
+            </div>
+            <div class="table-wrap">
+              <table id="sc-table">
+                <thead><tr id="sc-thead"></tr></thead>
+                <tbody id="sc-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div><!-- /panel-screener -->
+
+
+      <!-- ══════════════════════════════════════════
+           PANEL 4 — RESULTS
+      ══════════════════════════════════════════ -->
+      <div id="panel-results" class="panel">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Trade Logs</span>
+              <button class="btn btn-secondary" style="padding:5px 10px; font-size:10px;" onclick="loadResults()">Refresh</button>
+            </div>
+            <div id="trade-logs-list" class="dim" style="font-size:12px; font-family:var(--mono);">
+              Click refresh to load saved files.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Saved Charts</span>
+            </div>
+            <div id="charts-list" class="dim" style="font-size:12px; font-family:var(--mono);">
+              Click refresh to load saved charts.
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ══════════════════════════════════════════
+           PANEL 5 — DOCS / GUIDE
+      ══════════════════════════════════════════ -->
+      <div id="panel-docs" class="panel">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Quick Start Guide</span></div>
+          <div style="line-height:1.9; color: var(--text-2); font-size:13px; max-width:700px;">
+            <h3 style="color:var(--accent); font-size:13px; margin-bottom:8px;">1. Running a Backtest</h3>
+            <p>Enter a symbol (e.g. <code class="mono" style="background:var(--surface-3); padding:2px 6px; border-radius:3px;">RELIANCE</code>), choose a strategy, set your dates and capital, then click <b>Run Backtest</b>.</p>
+            <p style="margin-top:8px;">The engine executes signals at next bar's open (no look-ahead bias). Results include: metrics, Streak-style chart, equity curve, and full trade log.</p>
+
+            <hr class="section-divider">
+            <h3 style="color:var(--accent); font-size:13px; margin-bottom:8px;">2. Order Types</h3>
+            <p><b>Market:</b> Execute at next bar's open (default, most realistic).</p>
+            <p><b>Limit:</b> Enter only if price pulls back to your limit level (patient entry).</p>
+            <p><b>Stop:</b> Enter on breakout above a stop level.</p>
+            <p><b>Stop-Loss %:</b> Automatically close a position if it moves against you by X%.</p>
+            <p><b>Trailing Stop:</b> Stop level follows price upward, never backward.</p>
+
+            <hr class="section-divider">
+            <h3 style="color:var(--accent); font-size:13px; margin-bottom:8px;">3. Parameter Optimizer</h3>
+            <p>Use the Optimizer panel to find the best parameter values. Provide comma-separated values for each parameter (e.g. <code class="mono" style="background:var(--surface-3); padding:2px 6px; border-radius:3px;">fast_period → 5,9,13</code>). Use <b>Random Search</b> for large grids (faster). Choose your target metric (Sharpe, Return, etc.).</p>
+
+            <hr class="section-divider">
+            <h3 style="color:var(--accent); font-size:13px; margin-bottom:8px;">4. Screener</h3>
+            <p>Scans all symbols with local OHLCV data. Returns today's signals — stocks at buy or sell setups per your strategy. Results are ranked and can be saved as CSV/JSON.</p>
+
+            <hr class="section-divider">
+            <h3 style="color:var(--accent); font-size:13px; margin-bottom:8px;">5. Writing Your Own Strategy</h3>
+            <pre style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r); padding:12px; font-size:11px; overflow-x:auto; margin-top:8px;">from strategies.base import BaseStrategy
+from indicators.technical import ema, crossover
+
+class MyStrategy(BaseStrategy):
+    def __init__(self, fast=9, slow=21):
+        super().__init__(name="My EMA Cross")
+        self.fast = fast
+        self.slow = slow
+
+    def generate_signals(self, df):
+        df = df.copy()
+        df['ema_fast'] = ema(df['close'], self.fast)
+        df['ema_slow'] = ema(df['close'], self.slow)
+        df['signal']   = 0
+        df.loc[crossover(df['ema_fast'], df['ema_slow']), 'signal']  = 1
+        df.loc[crossunder(df['ema_fast'], df['ema_slow']), 'signal'] = -1
+        return df</pre>
+
+            <hr class="section-divider">
+            <h3 style="color:var(--accent); font-size:13px; margin-bottom:8px;">6. Using External Indicator Libraries</h3>
+            <pre style="background:var(--surface-2); border:1px solid var(--border); border-radius:var(--r); padding:12px; font-size:11px; overflow-x:auto; margin-top:8px;">from indicators.bridge import IndicatorBridge
+
+bridge = IndicatorBridge()
+print(bridge.library_status())  # See what's installed
+
+# Auto-selects best available library:
+rsi  = bridge.rsi(df['close'], 14)
+atr  = bridge.atr(df, 14)
+
+# Force a specific library:
+ema  = bridge.ema(df['close'], 20, library='pandas_ta')
+
+# Use any pandas-ta indicator by name:
+bb   = bridge.pandas_ta_indicator(df, 'bbands', length=20)
+
+# Register your own custom indicator:
+bridge.register('my_zscore_rsi',
+    lambda c, p: bridge.zscore(bridge.rsi(c, p), 20)
+)</pre>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════ -->
+<script>
+// ── Strategy parameter schemas (mirrors STRATEGY_REGISTRY in app.py) ──────────
+const STRATEGY_SCHEMAS = {
+  EMACrossover: [
+    { name: 'fast_period', label: 'Fast Period', type: 'int',   default: 9,  min: 2,  max: 50  },
+    { name: 'slow_period', label: 'Slow Period', type: 'int',   default: 21, min: 5,  max: 200 },
+  ],
+  RSIMeanReversion: [
+    { name: 'rsi_period',        label: 'RSI Period',       type: 'int',   default: 14, min: 2,  max: 50 },
+    { name: 'oversold_level',    label: 'Oversold Level',   type: 'float', default: 30, min: 5,  max: 45 },
+    { name: 'overbought_level',  label: 'Overbought Level', type: 'float', default: 70, min: 55, max: 95 },
+    { name: 'sma_filter_period', label: 'SMA Filter (0=off)', type: 'int', default: 200,min: 0,  max: 500 },
+  ],
+  BollingerBandStrategy: [
+    { name: 'period',  label: 'Period',      type: 'int',    default: 20,        min: 5,  max: 100 },
+    { name: 'std_dev', label: 'Std Dev',     type: 'float',  default: 2.0,       min: 1,  max: 4   },
+    { name: 'mode',    label: 'Mode',        type: 'select', default: 'reversion', options: ['reversion','breakout'] },
+  ],
+  MACDStrategy: [
+    { name: 'fast_period',   label: 'Fast',   type: 'int', default: 12, min: 3,  max: 30 },
+    { name: 'slow_period',   label: 'Slow',   type: 'int', default: 26, min: 10, max: 60 },
+    { name: 'signal_period', label: 'Signal', type: 'int', default: 9,  min: 3,  max: 20 },
+    { name: 'rsi_filter',    label: 'RSI Filter (0=off)', type: 'int', default: 0, min: 0, max: 60 },
+  ],
+  SupertrendStrategy: [
+    { name: 'period',     label: 'Period',     type: 'int',   default: 10, min: 5,  max: 30 },
+    { name: 'multiplier', label: 'Multiplier', type: 'float', default: 3.0,min: 1,  max: 6  },
+  ],
+};
+
+const API = '';  // Same origin
+
+// ── Panel navigation ────────────────────────────────────────────────────────
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+
+  const titles = {
+    backtester: ['Backtester', 'Simulate strategies on historical data'],
+    optimizer:  ['Optimizer', 'Find optimal strategy parameters'],
+    screener:   ['Screener', 'Scan Nifty 500 for today\'s signals'],
+    results:    ['Saved Results', 'Trade logs · Charts · Raw data'],
+    docs:       ['Guide', 'How to use AlgoDesk'],
+  };
+  const [title, meta] = titles[name] || [name, ''];
+  document.getElementById('topbar-title').textContent = title;
+  document.getElementById('topbar-meta').textContent  = meta;
+
+  if (name === 'results') loadResults();
+}
+
+// ── Dynamic strategy parameter controls ────────────────────────────────────
+function onStrategyChange() {
+  const stratName  = document.getElementById('bt-strategy').value;
+  const schema     = STRATEGY_SCHEMAS[stratName] || [];
+  const grid       = document.getElementById('strategy-params-grid');
+
+  grid.innerHTML = schema.map(p => {
+    if (p.type === 'select') {
+      const opts = p.options.map(o =>
+        `<option value="${o}" ${o === p.default ? 'selected':''} >${o}</option>`
+      ).join('');
+      return `<div class="form-group">
+        <label class="form-label">${p.label}</label>
+        <select id="sp-${p.name}">${opts}</select>
+      </div>`;
+    }
+    return `<div class="form-group">
+      <label class="form-label">${p.label}</label>
+      <input id="sp-${p.name}" type="number" value="${p.default}"
+        min="${p.min}" max="${p.max}" step="${p.type==='float'?'0.5':'1'}">
+    </div>`;
+  }).join('');
+}
+onStrategyChange();
+
+function collectStrategyParams() {
+  const stratName = document.getElementById('bt-strategy').value;
+  const schema    = STRATEGY_SCHEMAS[stratName] || [];
+  const params    = {};
+  schema.forEach(p => {
+    const el = document.getElementById('sp-' + p.name);
+    if (!el) return;
+    params[p.name] = (p.type === 'int')    ? parseInt(el.value) :
+                     (p.type === 'float')  ? parseFloat(el.value) :
+                     el.value;
+  });
+  return params;
+}
+
+// ── Utility ─────────────────────────────────────────────────────────────────
+function showAlert(id, msg, type='error') {
+  const el = document.getElementById(id);
+  el.className = `alert show alert-${type}`;
+  el.textContent = msg;
+  setTimeout(() => el.classList.remove('show'), 8000);
+}
+function numFmt(v) {
+  const n = parseFloat(String(v).replace(/[₹%,Rs ]/g,''));
+  return isNaN(n) ? v : n;
+}
+function pnlClass(v) {
+  const n = numFmt(v); return n > 0 ? 'td-pos' : n < 0 ? 'td-neg' : '';
+}
+
+// ── Run Backtest ─────────────────────────────────────────────────────────────
+async function runBacktest() {
+  const btn = document.querySelector('#panel-backtester .btn-primary');
+  const loader = document.getElementById('bt-loader');
+  btn.disabled = true; loader.classList.add('show');
+  document.getElementById('bt-results').style.display = 'none';
+
+  const payload = {
+    symbol:            document.getElementById('bt-symbol').value.toUpperCase().trim(),
+    strategy_name:     document.getElementById('bt-strategy').value,
+    strategy_params:   collectStrategyParams(),
+    timeframe:         document.getElementById('bt-timeframe').value,
+    from_date:         document.getElementById('bt-from').value,
+    to_date:           document.getElementById('bt-to').value,
+    initial_capital:   parseFloat(document.getElementById('bt-capital').value),
+    capital_risk_pct:  parseFloat(document.getElementById('bt-risk').value) / 100,
+    segment:           document.getElementById('bt-segment').value,
+    order_type:        document.getElementById('bt-order-type').value,
+    allow_shorting:    document.getElementById('bt-short').checked,
+    max_positions:     parseInt(document.getElementById('bt-maxpos').value),
+    lot_size:          parseInt(document.getElementById('bt-lot').value),
+    stop_loss_pct:     parseFloat(document.getElementById('bt-stoploss').value),
+    trailing_stop_pct: parseFloat(document.getElementById('bt-trailing').value),
+    use_trailing_stop: document.getElementById('bt-trailing-enable').checked,
+    save_chart:        document.getElementById('bt-save-chart').checked,
+    save_trade_log:    document.getElementById('bt-save-trades').checked,
+    save_raw_data:     document.getElementById('bt-save-raw').checked,
+    run_label:         'dashboard',
+  };
+
+  try {
+    const res  = await fetch(API + '/api/backtest', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json(); throw new Error(err.detail || 'Server error');
+    }
+    const data = await res.json();
+    renderBacktestResults(data);
+  } catch (e) {
+    showAlert('bt-alert', '⚠ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; loader.classList.remove('show');
+  }
+}
+
+function renderBacktestResults(data) {
+  const m = data.metrics;
+
+  // ── Metrics chips ──────────────────────────────────────────────────────
+  const chips = [
+    { label: 'Total Return',   value: m['Total Return'],   cls: parseFloat(m['Total Return'])>0?'green':'red' },
+    { label: 'CAGR',           value: m['CAGR'],           cls: 'amber' },
+    { label: 'Sharpe Ratio',   value: m['Sharpe Ratio'],   cls: parseFloat(m['Sharpe Ratio'])>1?'green':'blue' },
+    { label: 'Max Drawdown',   value: m['Max Drawdown'],   cls: 'red' },
+    { label: 'Win Rate',       value: m['Win Rate'],       cls: parseFloat(m['Win Rate'])>50?'green':'red' },
+    { label: 'Profit Factor',  value: m['Profit Factor'],  cls: parseFloat(m['Profit Factor'])>1?'green':'red' },
+    { label: 'Total Trades',   value: m['Total Trades'],   cls: '' },
+    { label: 'Total Charges',  value: m['Total Charges Paid'], cls: '' },
+    { label: 'Expectancy',     value: m['Expectancy/Trade'], cls: parseFloat(m['Expectancy/Trade'])>0?'green':'red' },
+    { label: 'Final Portfolio',value: m['Final Portfolio'], cls: 'blue' },
+  ];
+  document.getElementById('bt-metrics').innerHTML = chips.map(c =>
+    `<div class="metric-chip ${c.cls}">
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}</div>
+    </div>`
+  ).join('');
+
+  // ── Chart image ────────────────────────────────────────────────────────
+  const chartContainer = document.getElementById('bt-chart-container');
+  if (data.chart_b64) {
+    const src = 'data:image/png;base64,' + data.chart_b64;
+    chartContainer.innerHTML = `<img src="${src}" alt="Backtest Chart" style="width:100%;height:auto;">`;
+    document.getElementById('bt-chart-download').href = src;
+    document.getElementById('bt-chart-download').style.display = 'inline-flex';
+  } else {
+    chartContainer.innerHTML = '<div class="chart-placeholder">Chart disabled or generation failed.</div>';
+  }
+
+  // ── Mini equity curve ──────────────────────────────────────────────────
+  drawLineCanvas('equity-canvas', data.equity, '#4fa3e8', data.equity[0]?.value);
+  drawLineCanvas('dd-canvas',     data.drawdown, '#f05060', 0, true);
+
+  // ── Trade table ────────────────────────────────────────────────────────
+  const tbody = document.getElementById('bt-trade-tbody');
+  tbody.innerHTML = '';
+  data.trades.forEach((t, i) => {
+    const dir   = t.direction === 'LONG' ? '▲ LONG' : '▼ SHORT';
+    const dirCl = t.direction === 'LONG' ? 'td-pos' : 'td-neg';
+    const pnlCl = t.net_pnl > 0 ? 'td-pos' : 'td-neg';
+    tbody.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td class="${dirCl}">${dir}</td>
+        <td>${String(t.entry_time).slice(0,16)}</td>
+        <td>₹${t.entry_price.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+        <td>${String(t.exit_time).slice(0,16)}</td>
+        <td>₹${t.exit_price.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+        <td>${t.quantity}</td>
+        <td>₹${t.gross_pnl.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+        <td class="muted">₹${t.total_charges.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+        <td class="${pnlCl}" style="font-weight:600;">₹${t.net_pnl.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+        <td class="${pnlCl}">${(t.pnl_pct*100).toFixed(2)}%</td>
+        <td class="muted">${t.exit_signal||''}</td>
+        <td class="muted">${t.duration||''}</td>
+      </tr>`;
+  });
+  document.getElementById('bt-trade-count').textContent = data.trades.length + ' trades';
+  document.getElementById('bt-results').style.display = 'block';
+  document.getElementById('bt-results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function clearBacktestResults() {
+  document.getElementById('bt-results').style.display = 'none';
+  document.getElementById('bt-chart-container').innerHTML =
+    '<div class="chart-placeholder">Chart will appear after running backtest.</div>';
+}
+
+// ── Canvas Line Chart (equity / drawdown) ────────────────────────────────────
+function drawLineCanvas(canvasId, series, color, baseline, invertFill) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !series || series.length < 2) return;
+  const ctx    = canvas.getContext('2d');
+  const W      = canvas.offsetWidth || 400;
+  const H      = canvas.height;
+  canvas.width = W;
+
+  const vals   = series.map(d => d.value);
+  const minV   = Math.min(...vals);
+  const maxV   = Math.max(...vals);
+  const range  = maxV - minV || 1;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#111318';
+  ctx.fillRect(0, 0, W, H);
+
+  const px = (i) => (i / (vals.length - 1)) * (W - 2) + 1;
+  const py = (v)  => H - 4 - ((v - minV) / range) * (H - 8);
+
+  // Fill
+  const basePy = baseline !== undefined ? py(baseline) : H;
+  ctx.beginPath();
+  ctx.moveTo(px(0), Math.min(H, basePy));
+  vals.forEach((v, i) => ctx.lineTo(px(i), py(v)));
+  ctx.lineTo(px(vals.length - 1), Math.min(H, basePy));
+  ctx.closePath();
+  const fillAlpha = color + '22';
+  ctx.fillStyle = color + '28';
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 1.5;
+  ctx.lineJoin    = 'round';
+  vals.forEach((v, i) => i === 0 ? ctx.moveTo(px(i), py(v)) : ctx.lineTo(px(i), py(v)));
+  ctx.stroke();
+}
+
+// ── Optimizer ────────────────────────────────────────────────────────────────
+function addParamRow() {
+  const container = document.getElementById('opt-param-rows');
+  const div = document.createElement('div');
+  div.className = 'param-grid-row';
+  div.style.cssText = 'display:flex; gap:10px; margin-bottom:8px; align-items:center;';
+  div.innerHTML = `
+    <input style="width:140px;" placeholder="param_name" class="opt-param-name">
+    <span class="sep">→</span>
+    <input style="flex:1;" placeholder="e.g. 5,9,13" class="opt-param-values">
+    <button class="btn btn-secondary" style="padding:5px 10px;" onclick="removeParamRow(this)">✕</button>`;
+  container.appendChild(div);
+}
+function removeParamRow(btn) {
+  btn.parentElement.remove();
+}
+
+async function runOptimizer() {
+  const btn    = document.querySelector('#panel-optimizer .btn-primary');
+  const loader = document.getElementById('opt-loader');
+  btn.disabled = true; loader.classList.add('show');
+  document.getElementById('opt-results').style.display = 'none';
+
+  const paramGrid = {};
+  document.querySelectorAll('.opt-param-row, .param-grid-row').forEach(row => {
+    const nameEl   = row.querySelector('.opt-param-name');
+    const valuesEl = row.querySelector('.opt-param-values');
+    if (!nameEl || !valuesEl || !nameEl.value.trim()) return;
+    paramGrid[nameEl.value.trim()] = valuesEl.value.split(',')
+      .map(v => v.trim())
+      .filter(Boolean)
+      .map(v => isNaN(v) ? v : parseFloat(v));
+  });
+
+  const payload = {
+    symbol:          document.getElementById('opt-symbol').value.toUpperCase().trim(),
+    strategy_name:   document.getElementById('opt-strategy').value,
+    param_grid:      paramGrid,
+    metric:          document.getElementById('opt-metric').value,
+    method:          document.getElementById('opt-method').value,
+    n_random:        parseInt(document.getElementById('opt-nrandom').value),
+    from_date:       document.getElementById('opt-from').value,
+    initial_capital: 500000,
+    segment:         'EQUITY_DELIVERY',
+  };
+
+  try {
+    const res  = await fetch(API + '/api/optimize', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Error'); }
+    const data = await res.json();
+    renderOptimizerResults(data);
+  } catch(e) {
+    showAlert('opt-alert', '⚠ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; loader.classList.remove('show');
+  }
+}
+
+function renderOptimizerResults(data) {
+  const rows = data.results;
+  if (!rows || rows.length === 0) {
+    showAlert('opt-alert', 'No results produced. Check parameter names match the strategy.', 'error');
+    return;
+  }
+  const cols = Object.keys(rows[0]);
+  document.getElementById('opt-thead').innerHTML = cols.map(c =>
+    `<th>${c.replace(/_/g,' ')}</th>`).join('');
+  document.getElementById('opt-tbody').innerHTML = rows.map((r, i) =>
+    `<tr>${cols.map((c,ci) => {
+      const v    = r[c];
+      const cls  = (c === data.metric && i === 0) ? 'acc' :
+                   (c.includes('return') || c.includes('pnl')) ? pnlClass(v) : '';
+      return `<td class="${cls}">${typeof v === 'number' ? v.toFixed(3) : v}</td>`;
+    }).join('')}</tr>`
+  ).join('');
+  document.getElementById('opt-count').textContent = rows.length + ' results';
+  document.getElementById('opt-results').style.display = 'block';
+}
+
+// ── Screener ──────────────────────────────────────────────────────────────────
+async function runScreener() {
+  const btn    = document.querySelector('#panel-screener .btn-primary');
+  const loader = document.getElementById('sc-loader');
+  btn.disabled = true; loader.classList.add('show');
+
+  const payload = {
+    strategy_name:   document.getElementById('sc-strategy').value,
+    strategy_params: {},
+    signal_type:     parseInt(document.getElementById('sc-signal').value),
+    min_volume:      parseFloat(document.getElementById('sc-volume').value),
+    min_price:       parseFloat(document.getElementById('sc-minprice').value),
+    max_results:     parseInt(document.getElementById('sc-maxresults').value),
+    rank_by:         document.getElementById('sc-rankby').value,
+    timeframe:       'daily',
+  };
+
+  try {
+    const res  = await fetch(API + '/api/screener/scan', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Error'); }
+    const data = await res.json();
+    renderScreenerResults(data);
+  } catch(e) {
+    showAlert('sc-alert', '⚠ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; loader.classList.remove('show');
+  }
+}
+
+function renderScreenerResults(data) {
+  const hits = data.results;
+  if (!hits || hits.length === 0) {
+    showAlert('sc-alert', 'No signals found in the current universe.', 'info');
+    document.getElementById('sc-results').style.display = 'none';
+    return;
+  }
+  const cols = Object.keys(hits[0]);
+  document.getElementById('sc-thead').innerHTML = cols.map(c =>
+    `<th>${c.replace(/_/g,' ')}</th>`).join('');
+  document.getElementById('sc-tbody').innerHTML = hits.map(r =>
+    `<tr>${cols.map(c => {
+      if (c === 'signal') {
+        const badge = r[c] === 1
+          ? '<span class="signal-badge signal-buy">▲ BUY</span>'
+          : '<span class="signal-badge signal-sell">▼ SELL</span>';
+        return `<td>${badge}</td>`;
+      }
+      const v = r[c];
+      return `<td>${typeof v === 'number' ? v.toLocaleString('en-IN',{maximumFractionDigits:2}) : (v ?? '-')}</td>`;
+    }).join('')}</tr>`
+  ).join('');
+  document.getElementById('sc-count').textContent = hits.length + ' found';
+  document.getElementById('sc-results').style.display = 'block';
+}
+
+// ── Results panel ─────────────────────────────────────────────────────────────
+async function loadResults() {
+  try {
+    const [tr, ch] = await Promise.all([
+      fetch(API + '/api/results/trade_logs').then(r => r.json()),
+      fetch(API + '/api/results/charts').then(r => r.json()),
+    ]);
+
+    document.getElementById('trade-logs-list').innerHTML =
+      tr.files.length === 0 ? '<span class="muted">No files yet.</span>' :
+      tr.files.map(f =>
+        `<div style="padding:6px 0; border-bottom:1px solid var(--border);">
+          <span>${f.name}</span>
+          <span class="muted" style="margin-left:10px;">${f.size_kb} KB</span>
+          <span class="muted" style="margin-left:10px;">${f.modified}</span>
+        </div>`
+      ).join('');
+
+    document.getElementById('charts-list').innerHTML =
+      ch.files.length === 0 ? '<span class="muted">No charts yet.</span>' :
+      ch.files.map(f =>
+        `<div style="padding:6px 0; border-bottom:1px solid var(--border);">
+          <a href="${f.url}" target="_blank" style="color:var(--accent);">${f.name}</a>
+          <span class="muted" style="margin-left:10px;">${f.size_kb} KB</span>
+        </div>`
+      ).join('');
+  } catch(e) {
+    document.getElementById('trade-logs-list').innerHTML =
+      '<span class="muted">API not available. Start the server first.</span>';
+  }
+}
+
+// ── Resize handler for canvas charts ─────────────────────────────────────────
+window.addEventListener('resize', () => {
+  // Re-draw if we have data — just call render again (skipped here for brevity)
+});
+</script>
+</body>
+</html>
