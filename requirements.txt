@@ -17,6 +17,8 @@ fastapi==0.109.0              # API server for the dashboard
 uvicorn==0.27.0               # ASGI server to run FastAPI
 flask 
 pyopenssl
+python-multipart 
+aiofiles
 
 # --- Scheduling ---
 APScheduler==3.10.4           # Run jobs at market open/close, EOD updates
@@ -35,5 +37,6 @@ pytest-mock==3.14.0           # Mock objects for testing API calls
 python-telegram-bot==20.7     # Telegram alerts
 
 # --- Dashboard Charts (used in templates) ---
+matplotlib
 # Note: Plotly and Lightweight Charts are loaded via CDN in HTML templates
 # No Python package needed for frontend charting
