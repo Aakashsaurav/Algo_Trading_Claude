@@ -763,7 +763,7 @@ async def run_screener(req: ScreenerRequest):
     - Individual symbol errors → logged, skipped (scan never crashes)
     - rank_by column absent → screener falls back to 'close'
     """
-    from screener.screener_v2 import Screener, ScreenerConfig
+    from screener.screener import Screener, ScreenerConfig
 
     symbols = _list_available_symbols()[:200]   # cap to prevent timeout
 

@@ -1,0 +1,17 @@
+*.log
+*.env
+.env
+config.py
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+.DS_Store
+.pytest_cache/
+*/__pycache__/
+*/token.json
+*/.env
+*/config.py
+*/.parquet

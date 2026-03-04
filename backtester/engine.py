@@ -192,6 +192,22 @@ class BacktestResult:
     def metrics_dict(self) -> Dict:
         return self._compute_metrics()
 
+    # ------------------------------------------------------------------
+    # Data export helpers
+    # ------------------------------------------------------------------
+    def export_signals_csv(self, path: str) -> None:
+        """Write the signals DataFrame (ohlcv + indicators + signal column) to
+        a CSV file at the specified ``path``.
+
+        The DataFrame is exactly what the strategy returned in
+        ``BacktestEngine.run``; it already includes the original OHLCV columns
+        plus any indicator columns added by the strategy and the final
+        ``signal`` column.
+        """
+        if self.signals_df is None or self.signals_df.empty:
+            raise ValueError("No signal data available to export.")
+        self.signals_df.to_csv(path)
+
 
 class BacktestEngine:
     """

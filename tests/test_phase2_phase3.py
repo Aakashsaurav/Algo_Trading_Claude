@@ -1203,6 +1203,28 @@ class TestBacktestEngineBasic(unittest.TestCase):
             self.engine.run(self.df, BadStrategy("Bad"), "TEST")
         self.assertIn("signal", str(ctx.exception))
 
+    def test_export_signals_csv_creates_file(self):
+        """BacktestResult.export_signals_csv should write a CSV containing
+        the OHLCV data with indicators and 'signal' column.
+        """
+        result = self.engine.run(self.df, self.strategy, symbol="TEST")
+        # create a temporary file path
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
+        tmp_path = tmp.name
+        tmp.close()
+
+        # perform export and verify
+        result.export_signals_csv(tmp_path)
+        self.assertTrue(os.path.exists(tmp_path), "CSV file was not created")
+
+        df2 = pd.read_csv(tmp_path, index_col=0)
+        self.assertIn("signal", df2.columns)
+        # original OHLCV columns should still be present
+        for col in ["open", "high", "low", "close", "volume"]:
+            self.assertIn(col, df2.columns)
+
+        os.remove(tmp_path)
+
     def test_warns_on_too_few_bars(self):
         """Engine must warn when fewer than 100 bars are provided."""
         tiny_df = _make_ohlcv(50)
