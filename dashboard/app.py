@@ -465,7 +465,7 @@ async def run_screener(req: ScreenerRequest):
 
     Returns all symbols where the strategy's last signal matches signal_type.
     """
-    from screener.screener_v2 import Screener, ScreenerConfig
+    from screener.screener import Screener, ScreenerConfig
 
     # Load available symbols
     try:
