@@ -29,7 +29,7 @@ INDICATOR_COLS = ["#79c0ff", "#d2a8ff", "#ffb17a", "#56d364", "#e3b341"]
 
 
 def generate_report(result, symbol="SYMBOL", output_dir="reports",
-                    filename=None, show=False, max_candles=500):
+                    filename=None, show=False, max_candles=2000):
     """
     Generate a Streak-style multi-panel backtest report (PNG).
 
@@ -47,7 +47,7 @@ def generate_report(result, symbol="SYMBOL", output_dir="reports",
         output_dir:  Folder to save PNG (created if missing)
         filename:    Override default filename
         show:        Display interactively if True
-        max_candles: Limit candles plotted for readability (default 500)
+        max_candles: Limit candles plotted for readability (default 2000)
 
     Returns:
         str: Absolute path of saved PNG file

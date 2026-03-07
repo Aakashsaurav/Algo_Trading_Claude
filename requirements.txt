@@ -40,3 +40,8 @@ python-telegram-bot==20.7     # Telegram alerts
 matplotlib
 # Note: Plotly and Lightweight Charts are loaded via CDN in HTML templates
 # No Python package needed for frontend charting
+
+#Indicator libraries
+pandas-ta
+ta
+#TA-Lib

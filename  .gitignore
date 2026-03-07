@@ -15,3 +15,6 @@ __pycache__/
 */.env
 */config.py
 */.parquet
+*/.csv
+*/.png
+*/.log
