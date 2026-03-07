@@ -286,20 +286,30 @@ def supertrend(
 
     close = df["close"]
 
+    # Set for the first bar
+    if not pd.isna(atr_val.iloc[0]):
+        if close.iloc[0] > final_upper.iloc[0]:
+            direction.iloc[0] = 1
+        elif close.iloc[0] < final_lower.iloc[0]:
+            direction.iloc[0] = -1
+        else:
+            direction.iloc[0] = 1  # assume bullish if in between
+        supertrend_line.iloc[0] = final_lower.iloc[0] if direction.iloc[0] == 1 else final_upper.iloc[0]
+
     for i in range(1, len(df)):
         if pd.isna(atr_val.iloc[i]):
             continue
 
         # Upper band: only decreases if new upper < previous upper OR prev close > prev upper
         prev_upper = final_upper.iloc[i - 1]
-        if upper_band.iloc[i] < prev_upper or close.iloc[i - 1] > prev_upper:
+        if pd.isna(prev_upper) or upper_band.iloc[i] < prev_upper or close.iloc[i - 1] > prev_upper:
             final_upper.iloc[i] = upper_band.iloc[i]
         else:
             final_upper.iloc[i] = prev_upper
 
         # Lower band: only increases if new lower > previous lower OR prev close < prev lower
         prev_lower = final_lower.iloc[i - 1]
-        if lower_band.iloc[i] > prev_lower or close.iloc[i - 1] < prev_lower:
+        if pd.isna(prev_lower) or lower_band.iloc[i] > prev_lower or close.iloc[i - 1] < prev_lower:
             final_lower.iloc[i] = lower_band.iloc[i]
         else:
             final_lower.iloc[i] = prev_lower
@@ -323,14 +333,22 @@ def supertrend(
             supertrend_line.iloc[i] = final_upper.iloc[i]
 
     # Detect direction changes for signals
-    buy_signal  = (direction == 1)  & (direction.shift(1) == -1)
-    sell_signal = (direction == -1) & (direction.shift(1) == 1)
+    buy_signal  = pd.Series(False, index=df.index)
+    sell_signal = pd.Series(False, index=df.index)
+    for i in range(len(df)):
+        if pd.isna(direction.iloc[i]):
+            continue
+        prev_dir = direction.shift(1).iloc[i]
+        if pd.isna(prev_dir) or direction.iloc[i] != prev_dir:
+            if direction.iloc[i] == 1:
+                buy_signal.iloc[i] = True
+            elif direction.iloc[i] == -1:
+                sell_signal.iloc[i] = True
 
     return pd.DataFrame({
-        "supertrend":  supertrend_line,
-        "direction":   direction,
-        "buy_signal":  buy_signal,
-        "sell_signal": sell_signal,
+        "supertrend_upper": final_upper,
+        "supertrend_lower": final_lower,
+        "supertrend_signal": direction,
     }, index=df.index)
 
 

@@ -41,6 +41,8 @@ class Position:
     direction:     int
     entry_signal:  str   = ""
     entry_charges: float = 0.0
+    # index of bar at which the position was opened (for computing duration)
+    entry_bar_idx: int   = 0
     mae:           float = 0.0
     mfe:           float = 0.0
 
@@ -137,7 +139,7 @@ class BacktestResult:
         eq = self.equity_curve.dropna()
         max_dd   = self.drawdown.min() if not self.drawdown.empty else 0
 
-        daily_ret = eq.resample("B").last().pct_change().dropna() if len(eq) > 1 else pd.Series()
+        daily_ret = eq.resample("B").last().pct_change(fill_method=None).dropna() if len(eq) > 1 else pd.Series()
         sharpe    = ((daily_ret.mean() / daily_ret.std()) * (252**0.5)
                      if len(daily_ret) > 1 and daily_ret.std() > 0 else 0)
 
@@ -314,6 +316,7 @@ class BacktestEngine:
                                 entry_time=ct, entry_price=exec_price,
                                 quantity=qty, direction=-1,
                                 entry_signal="Short -1", entry_charges=chg.total,
+                                entry_bar_idx=i,
                             ))
 
             # --- BUY / LONG signal ---
@@ -331,6 +334,7 @@ class BacktestEngine:
                                 entry_time=ct, entry_price=exec_price,
                                 quantity=qty, direction=1,
                                 entry_signal="Long +1", entry_charges=chg.total,
+                                entry_bar_idx=i,
                             ))
 
         # End of data — close remaining positions at last close
@@ -378,11 +382,15 @@ class BacktestEngine:
             cash += (pos.entry_price - exit_price) * pos.quantity - exit_chg.total
 
         td        = exit_time - pos.entry_time
-        total_m   = int(td.total_seconds() / 60)
-        days      = total_m // 375   # 375 min = 6h15m trading day
-        hrs       = (total_m % 375)  // 60
-        mins      = total_m % 60
+        # compute human-readable duration using real elapsed time
+        total_s   = td.total_seconds()
+        days      = td.days
+        hrs       = int((total_s - days * 86400) // 3600)
+        mins      = int((total_s - days * 86400) % 3600 // 60)
         dur_str   = f"{days}d {hrs:02d}h {mins:02d}m"
+
+        # calculate bars held based on entry index stored in position
+        duration_bars = bar_idx - pos.entry_bar_idx
 
         cost_basis = pos.entry_price * pos.quantity
         pnl_pct    = (net_pnl / cost_basis * 100) if cost_basis > 0 else 0
@@ -399,7 +407,7 @@ class BacktestEngine:
             net_pnl=round(net_pnl, 2),
             pnl_pct=round(pnl_pct, 4),
             entry_signal=pos.entry_signal, exit_signal=exit_signal,
-            duration=dur_str, duration_bars=bar_idx,
+            duration=dur_str, duration_bars=duration_bars,
             mae=round(pos.mae, 4), mfe=round(pos.mfe, 4),
             cumulative_portfolio=round(portfolio_value, 2),
         )

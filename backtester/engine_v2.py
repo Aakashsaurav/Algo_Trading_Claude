@@ -117,6 +117,7 @@ class BacktestConfigV2(BacktestConfig):
         save_chart         : bool       — Save Streak-style PNG chart
         generate_summary   : bool       — Generate multi-security summary sheet
         run_label          : str        — Prefix for output filenames
+        max_candles        : int        — Max candles to plot in chart (default 2000)
     """
     # ── Advanced Order Types ──────────────────────────────────────────────────
     default_order_type:  OrderType     = OrderType.MARKET
@@ -132,6 +133,7 @@ class BacktestConfigV2(BacktestConfig):
     save_chart:          bool          = False
     generate_summary:    bool          = False
     run_label:           str           = "backtest"
+    max_candles:         int           = 2000      # Max candles to plot in chart
 
 
 # =============================================================================
@@ -640,7 +642,9 @@ class BacktestEngineV2:
 
         new_pos = PositionV2(
             entry_time=ct, entry_price=exec_price, quantity=qty, direction=direction,
-            entry_signal=entry_signal, entry_charges=chg.total, order_type=cfg.default_order_type,
+            entry_signal=entry_signal, entry_charges=chg.total,
+            entry_bar_idx=bar_idx,
+            order_type=cfg.default_order_type,
         )
 
         # Attach trailing stop if configured
@@ -711,6 +715,7 @@ class BacktestEngineV2:
                 output_dir=str(OUTPUT_CHART),
                 filename=f"{label}_{symbol}_chart.png",
                 show=False,
+                max_candles=self.config.max_candles,
             )
             logger.info(f"Chart: {fpath}")
             return fpath
@@ -780,11 +785,15 @@ class BacktestEngineV2:
             cash += (pos.entry_price - exit_price) * pos.quantity - exit_chg.total
 
         td        = exit_time - pos.entry_time
-        total_m   = int(td.total_seconds() / 60)
-        days      = total_m // 375
-        hrs       = (total_m % 375) // 60
-        mins      = total_m % 60
+        # compute elapsed time normally (24‑hour days)
+        total_s   = td.total_seconds()
+        days      = td.days
+        hrs       = int((total_s - days * 86400) // 3600)
+        mins      = int((total_s - days * 86400) % 3600 // 60)
         dur_str   = f"{days}d {hrs:02d}h {mins:02d}m"
+
+        # duration in bars based on stored entry index
+        duration_bars = bar_idx - pos.entry_bar_idx
 
         cost_basis = pos.entry_price * pos.quantity
         pnl_pct    = (net_pnl / cost_basis * 100) if cost_basis > 0 else 0
@@ -801,7 +810,7 @@ class BacktestEngineV2:
             net_pnl=round(net_pnl, 2),
             pnl_pct=round(pnl_pct, 4),
             entry_signal=pos.entry_signal, exit_signal=exit_signal,
-            duration=dur_str, duration_bars=bar_idx,
+            duration=dur_str, duration_bars=duration_bars,
             mae=round(pos.mae, 4), mfe=round(pos.mfe, 4),
             cumulative_portfolio=round(portfolio_value, 2),
         )
