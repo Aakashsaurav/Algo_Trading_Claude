@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlgoDesk — Strategy Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <!-- Monaco Editor (VS Code engine in browser) via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+  <style>
+    /* Strategy builder uses a two-column layout: editor left, settings right */
+    .builder-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 16px;
+      height: calc(100vh - 52px - 40px); /* viewport - topbar - padding */
+    }
+    .editor-col { display: flex; flex-direction: column; min-height: 0; }
+    .settings-col { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+    .editor-toolbar {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 8px;
+    }
+    .editor-toolbar select { width: auto; flex-shrink: 0; }
+    #monaco-container { flex: 1; min-height: 0; border-radius: 6px; }
+    .run-bar {
+      display: flex; gap: 8px; align-items: center;
+      padding-top: 10px; margin-top: auto;
+    }
+    .run-status { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+      <span>AlgoDesk</span>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Modules</div>
+      <a class="nav-item active" href="/strategy-builder">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <span>Strategy Builder</span>
+      </a>
+      <a class="nav-item" href="/backtester">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        <span>Backtester</span>
+      </a>
+      <a class="nav-item" href="/screener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Screener</span>
+      </a>
+      <a class="nav-item" href="/live-bot">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        <span>Live Bot</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer"><span class="status-dot"></span><span>System Ready</span></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <span class="topbar-title">Strategy Builder</span>
+      <span class="topbar-meta">Write · Configure · Backtest</span>
+      <div class="topbar-spacer"></div>
+      <span class="badge badge-amber">Editor</span>
+    </header>
+
+    <main class="page-content" style="overflow:hidden; padding:16px;">
+      <div class="builder-layout">
+
+        <!-- LEFT: Monaco code editor -->
+        <div class="editor-col">
+          <div class="editor-toolbar">
+            <label style="margin:0; white-space:nowrap;">Load strategy:</label>
+            <select id="strategy-select" style="flex:1;">
+              <option value="">— Loading strategies... —</option>
+            </select>
+            <button class="btn btn-ghost" onclick="loadTemplate()" title="Load boilerplate">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Template
+            </button>
+            <button class="btn btn-ghost" onclick="saveStrategy()" title="Save strategy file">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save
+            </button>
+          </div>
+
+          <!-- Monaco editor container -->
+          <div id="monaco-container"></div>
+
+          <div class="run-bar">
+            <button class="btn btn-primary" id="run-btn" onclick="runBacktest()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Run Backtest
+            </button>
+            <button class="btn btn-ghost" onclick="runScreener()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Screen
+            </button>
+            <div class="spinner" id="run-spinner"></div>
+            <span class="run-status" id="run-status"></span>
+          </div>
+        </div>
+
+        <!-- RIGHT: Settings panel -->
+        <div class="settings-col">
+
+          <!-- Data settings -->
+          <div class="card">
+            <div class="card-title">Data Settings</div>
+            <div class="form-group">
+              <label>Symbol</label>
+              <input type="text" id="cfg-symbol" value="INFY" placeholder="e.g. INFY, RELIANCE">
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Timeframe</label>
+                <select id="cfg-timeframe">
+                  <option value="daily">Daily</option>
+                  <option value="minute">1 Min</option>
+                  <option value="5m">5 Min</option>
+                  <option value="15m">15 Min</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Segment</label>
+                <select id="cfg-segment">
+                  <option value="EQUITY_DELIVERY">Equity (Delivery)</option>
+                  <option value="EQUITY_INTRADAY">Equity (Intraday)</option>
+                  <option value="FNO_FUTURES">F&O Futures</option>
+                  <option value="FNO_OPTIONS">F&O Options</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>From Date</label>
+                <input type="date" id="cfg-from" value="2020-01-01">
+              </div>
+              <div class="form-group">
+                <label>To Date</label>
+                <input type="date" id="cfg-to">
+              </div>
+            </div>
+          </div>
+
+          <!-- Capital & Risk -->
+          <div class="card">
+            <div class="card-title">Capital & Risk</div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Capital (₹)</label>
+                <input type="number" id="cfg-capital" value="500000" step="50000">
+              </div>
+              <div class="form-group">
+                <label>Risk / Trade (%)</label>
+                <input type="number" id="cfg-risk-pct" value="2" min="0.1" max="10" step="0.1">
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Lot Size</label>
+                <input type="number" id="cfg-lot-size" value="1" min="1">
+              </div>
+              <div class="form-group">
+                <label>Max Positions</label>
+                <input type="number" id="cfg-max-pos" value="5" min="1">
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Types -->
+          <div class="card">
+            <div class="card-title">Order & Stop Settings</div>
+            <div class="form-group">
+              <label>Entry Order Type</label>
+              <select id="cfg-order-type">
+                <option value="MARKET">Market</option>
+                <option value="LIMIT">Limit</option>
+                <option value="STOP">Stop</option>
+                <option value="STOP_LIMIT">Stop-Limit</option>
+                <option value="TRAILING_STOP">Trailing Stop</option>
+              </select>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Stop Loss (%)</label>
+                <input type="number" id="cfg-sl-pct" value="0" min="0" max="20" step="0.5">
+              </div>
+              <div class="form-group">
+                <label>Trailing Stop (%)</label>
+                <input type="number" id="cfg-trail-pct" value="0" min="0" max="20" step="0.5">
+              </div>
+            </div>
+            <div class="checkbox-row" style="margin-top:8px;">
+              <input type="checkbox" id="cfg-shorting">
+              <label for="cfg-shorting">Allow Short Selling</label>
+            </div>
+            <div class="checkbox-row" style="margin-top:8px;">
+              <input type="checkbox" id="cfg-intraday-sq">
+              <label for="cfg-intraday-sq">Intraday Squareoff @ 15:20</label>
+            </div>
+          </div>
+
+          <!-- Outputs -->
+          <div class="card">
+            <div class="card-title">Save Outputs</div>
+            <div class="checkbox-row" style="margin-bottom:8px;">
+              <input type="checkbox" id="cfg-save-chart" checked>
+              <label for="cfg-save-chart">Save chart PNG</label>
+            </div>
+            <div class="checkbox-row" style="margin-bottom:8px;">
+              <input type="checkbox" id="cfg-save-trades">
+              <label for="cfg-save-trades">Save trade log CSV</label>
+            </div>
+            <div class="checkbox-row">
+              <input type="checkbox" id="cfg-save-raw">
+              <label for="cfg-save-raw">Save raw data CSV (OHLCV + signals)</label>
+            </div>
+          </div>
+
+          <!-- Strategy params (dynamically rendered) -->
+          <div class="card" id="params-card" style="display:none;">
+            <div class="card-title">Strategy Parameters</div>
+            <div id="params-container"></div>
+          </div>
+
+        </div><!-- /settings-col -->
+      </div><!-- /builder-layout -->
+    </main>
+  </div>
+</div>
+
+<script src="/static/js/code_editor.js"></script>
+</body>
+</html>

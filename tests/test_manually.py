@@ -1,12 +1,13 @@
-'''
+
 #Test 1: broker/upstox/data_manager.py -> get_ohlcv() -> check if we have minute data for RELIANCE
 from broker.upstox.data_manager import get_ohlcv
 df = get_ohlcv(
-      instrument_type="EQUITY", exchange="NSE", trading_symbol="SBIN",
-      unit="hours", interval=1, from_date="2020-01-03"
+      instrument_type="EQUITY", exchange="NSE", trading_symbol="RELIANCE",
+      unit="days", interval=1, from_date="2015-01-03"
     )
 #print(df.head(10))
 
+'''
 #Test2
 from data.universe import universe_manager
 
@@ -15,12 +16,14 @@ fo_stocks = universe_manager.get_fo_stocks()
 
 print(nifty500)
 print(fo_stocks)
-
+'''
+'''
 #Test 3
 from data.stock_universe import stock_universe_manager
 stocks = stock_universe_manager.get_nifty500_detailed()
 print(stocks)
-
+'''
+'''
 #Test 4
 from indicators.technical import sma, ema, rsi
 import pandas as pd
@@ -32,7 +35,8 @@ df = get_ohlcv(
 
 df_sma = sma(df['close'], 20)
 print(df_sma.head)
-
+'''
+'''
 #Test 5
 from indicators.bridge import IndicatorBridge
 bridge = IndicatorBridge()
@@ -202,6 +206,7 @@ def test_ema_crossover_strategy():
 
     print("\nAll outputs saved to directory:", output_dir)
 '''
+'''
 #Test 7
 def test_rsi_supertrend_rs_strategy():
     """
@@ -225,7 +230,7 @@ def test_rsi_supertrend_rs_strategy():
     from backtester.engine_v2 import BacktestEngineV2, BacktestConfigV2
     from backtester.commission import Segment
     from backtester.order_types import OrderType
-    from strategies.base import RSISupertrendRelativeStrength
+    from strategies.base_strategy import RSISupertrendRelativeStrength
     from backtester.report import generate_report
     import os
 
@@ -381,3 +386,52 @@ def test_rsi_supertrend_rs_strategy():
 # Uncomment the line below to run the test
 # test_ema_crossover_strategy()
 test_rsi_supertrend_rs_strategy()
+'''
+'''
+#Test 8
+from broker.upstox.auth import AuthManager
+auth = AuthManager()
+
+# Step 1: Get the login URL and open it in browser
+url = auth.get_login_url()
+
+# Step 2: After redirect, paste the full redirect URL or just the code
+token = auth.generate_token(auth_code="BEuoBt")
+https://127.0.0.1:5000/?code=
+token = auth.generate_token_from_url("https://api-v2.upstox.com/login/authorization/redirect?code=J4AqmJ&ucc=728042")
+# All subsequent uses — just get a valid token:
+token = auth.get_valid_token()
+'''
+#Test 9
+from backtester.engine_v3 import BacktestEngineV3, BacktestConfigV3
+from backtester.order_types import OrderType
+from strategies.base_strategy_github import EMACrossover, RSIMeanReversion
+
+config = BacktestConfigV3(
+    initial_capital    = 500_000,
+    default_order_type = OrderType.MARKET,
+    capital_risk_pct   = 0.50,
+    max_positions      = 1,
+    fixed_quantity     = 0,
+    max_drawdown_pct   = 0.50,
+    save_trade_log     = True,
+    save_raw_data      = True,
+    save_chart         = True,
+    generate_summary   = True,
+    run_label          = "ema_crossover_reliance",
+    #limit_offset_pct   = 0.2,
+    #stop_loss_pct      = 2.0,
+    #trailing_stop_pct  = 1.5,
+    )
+engine   = BacktestEngineV3(config)
+strat = EMACrossover(fast_period=9, slow_period=21)
+
+# Single symbol
+result = engine.run(df, strat, symbol="RELIANCE")
+
+# Multi-symbol portfolio
+#results = engine.run_portfolio({symbol: df_dict[symbol] for symbol in symbols}, strategy)
+
+# Parameter optimization
+#param_grid = {'fast_period': [5,9,13], 'slow_period': [21,34,50]}
+#top_results = engine.optimize(df, StrategyClass, param_grid, symbol='INFY')

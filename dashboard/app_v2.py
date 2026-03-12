@@ -638,7 +638,7 @@ async def run_optimizer(req: OptimizeRequest):
 @app.post("/api/screener/scan", summary="Scan universe for strategy signals")
 async def run_screener(req: ScreenerRequest):
     """Scan available symbols for strategy signals."""
-    from screener.screener import Screener, ScreenerConfig
+    from screener.screener_v2 import Screener, ScreenerConfig
     from strategies.registry import load_strategy
 
     symbols = _list_available_symbols()

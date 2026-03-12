@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlgoDesk — Live Bot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <style>
+    .lb-layout { display:grid; grid-template-columns:280px 1fr; gap:16px; }
+    .lb-config { display:flex; flex-direction:column; gap:12px; }
+    .lb-monitor { display:flex; flex-direction:column; gap:14px; }
+    /* Status indicator pill */
+    .bot-status {
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 14px; border-radius:20px;
+      font-size:13px; font-weight:600; font-family:var(--mono);
+    }
+    .bot-status.stopped  { background:rgba(107,114,128,0.1); color:var(--muted); border:1px solid var(--border); }
+    .bot-status.paper    { background:rgba(59,130,246,0.1); color:var(--blue); border:1px solid rgba(59,130,246,0.3); }
+    .bot-status.live     { background:rgba(229,62,62,0.1); color:var(--red); border:1px solid rgba(229,62,62,0.3); }
+    .bot-status.live .status-dot { background:var(--red); }
+    .bot-status.paper .status-dot { background:var(--blue); }
+    /* PnL big display */
+    .pnl-display {
+      font-size:32px; font-family:var(--mono); font-weight:700;
+      line-height:1;
+    }
+    /* Log terminal */
+    #bot-log {
+      background:var(--bg-3); border:1px solid var(--border); border-radius:6px;
+      padding:12px; font-family:var(--mono); font-size:11px; color:var(--text-dim);
+      height:200px; overflow-y:auto;
+    }
+    .log-line { padding:1px 0; }
+    .log-line.info  { color:var(--text-dim); }
+    .log-line.ok    { color:var(--green); }
+    .log-line.warn  { color:var(--amber); }
+    .log-line.error { color:var(--red); }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>AlgoDesk</span>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Modules</div>
+      <a class="nav-item" href="/strategy-builder"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>Strategy Builder</span></a>
+      <a class="nav-item" href="/backtester"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg><span>Backtester</span></a>
+      <a class="nav-item" href="/screener"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>Screener</span></a>
+      <a class="nav-item active" href="/live-bot"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg><span>Live Bot</span></a>
+    </nav>
+    <div class="sidebar-footer"><span class="status-dot"></span><span>System Ready</span></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <span class="topbar-title">Live Bot</span>
+      <span class="topbar-meta">Paper Trading → Live Execution</span>
+      <div class="topbar-spacer"></div>
+      <div id="bot-status-badge" class="bot-status stopped">
+        <span class="status-dot"></span>
+        <span id="bot-status-label">Stopped</span>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <div class="alert alert-ok" style="margin-bottom:16px;">
+        ✅ <strong>Phase 5 complete.</strong>
+        Live Bot backend is now wired up — you can run paper or real orders using your Upstox account.  
+        Ensure you obtain a valid Upstox token before trading live.
+      </div>
+
+      <div class="lb-layout">
+
+        <!-- LEFT: Bot config -->
+        <div class="lb-config">
+          <div class="card">
+            <div class="card-title">Bot Configuration</div>
+            <div class="form-group">
+              <label>Strategy</label>
+              <select id="bot-strategy">
+                <option value="">Loading...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Symbol</label>
+              <input type="text" id="bot-symbol" value="NIFTY" placeholder="NIFTY, INFY…">
+            </div>
+            <div class="form-group">
+              <label>Timeframe</label>
+              <select id="bot-timeframe">
+                <option value="minute">1 Min (live)</option>
+                <option value="5m">5 Min</option>
+                <option value="daily">Daily (EOD)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Mode</label>
+              <select id="bot-mode">
+                <option value="paper">Paper Trading (safe — no real orders)</option>
+                <option value="live">Live Trading (⚠ real money)</option>
+              </select>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Capital (₹)</label>
+                <input type="number" id="bot-capital" value="500000" step="50000">
+              </div>
+              <div class="form-group">
+                <label>Risk % / Trade</label>
+                <input type="number" id="bot-risk" value="2" step="0.1">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Max Daily Loss (%)</label>
+              <input type="number" id="bot-max-daily-loss" value="2" step="0.5" placeholder="Stop bot if daily loss exceeds this %">
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="card">
+            <div class="card-title">Controls</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="btn btn-primary" id="start-btn" onclick="startBot()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Start Paper
+              </button>
+              <button class="btn btn-danger" id="stop-btn" onclick="stopBot()" disabled>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+                Stop
+              </button>
+              <button class="btn btn-ghost" onclick="squareOff()">
+                Square Off All
+              </button>
+            </div>
+          </div>
+
+          <!-- Auth check -->
+          <div class="card">
+            <div class="card-title">Upstox Connection</div>
+            <div id="auth-status" class="alert alert-info">
+              Checking Upstox token…
+            </div>
+            <button class="btn btn-ghost" onclick="checkAuth()" style="width:100%;margin-top:8px;">
+              Check Token
+            </button>
+          </div>
+        </div><!-- /lb-config -->
+
+        <!-- RIGHT: Monitor -->
+        <div class="lb-monitor">
+
+          <!-- Today's P&L -->
+          <div class="card">
+            <div class="card-title">Today's P&L</div>
+            <div style="display:flex; gap:28px; align-items:flex-end; flex-wrap:wrap;">
+              <div>
+                <div class="metric-label">Realised P&L (₹)</div>
+                <div class="pnl-display" id="realised-pnl">₹0</div>
+              </div>
+              <div>
+                <div class="metric-label">Unrealised P&L (₹)</div>
+                <div class="pnl-display" id="unrealised-pnl">₹0</div>
+              </div>
+              <div>
+                <div class="metric-label">Trades Today</div>
+                <div class="pnl-display" id="trades-today" style="font-size:22px;">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Open positions -->
+          <div class="card">
+            <div class="card-title">Open Positions</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Symbol</th><th>Dir</th><th>Qty</th><th>Entry ₹</th>
+                    <th>LTP</th><th>Unrealised P&L</th><th>Stop</th><th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="positions-tbody">
+                  <tr>
+                    <td colspan="8" style="text-align:center;color:var(--muted);padding:20px;">
+                      No open positions
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Completed trades today -->
+          <div class="card">
+            <div class="card-title">Completed Trades Today</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th><th>Symbol</th><th>Dir</th><th>Entry</th>
+                    <th>Exit</th><th>Net P&L</th><th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="completed-tbody">
+                  <tr>
+                    <td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">
+                      No trades today
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Activity log -->
+          <div class="card">
+            <div class="card-title">Activity Log</div>
+            <div id="bot-log">
+              <div class="log-line info">[System] Dashboard ready. Configure strategy and press Start.</div>
+            </div>
+          </div>
+
+        </div><!-- /lb-monitor -->
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/static/js/live_bot_panel.js"></script>
+</body>
+</html>

@@ -87,7 +87,7 @@ if __name__ == "__main__":
     print("=" * 55)
     print("  UPSTOX DAILY LOGIN")
     print("=" * 55)
-    print("Starting local HTTPS server on https://127.0.0.1:5000")
+    print("Starting local HTTPS server on https://127.0.0.1:5000/")
     print("Opening Upstox login in your browser...")
     print()
     print("NOTE: Your browser may warn about the self-signed")

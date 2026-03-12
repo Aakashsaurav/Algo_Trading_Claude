@@ -1,5 +1,5 @@
 """
-broker/instrument_manager.py
+broker/upstox/instrument_manager.py
 ------------------------------
 Instrument key lookup for all Upstox-traded securities.
 
@@ -59,6 +59,7 @@ import requests
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from config import config
 
@@ -70,9 +71,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-complete_instru_list = (
-    'https://assets.upstox.com/market-quote/instruments/exchange/complete.json.gz'
-)
+#complete_instru_list = (
+#    'https://assets.upstox.com/market-quote/instruments/exchange/complete.json.gz'
+#) --- IGNORE --- moved to config.py
+
+complete_instru_list = config.INSTRUMENT_KEY_URL
 
 # DATA_DIR uses config.DATA_DIR (project-level data/ folder).
 # Do NOT use Path(__file__).parent / 'data' here — that would create
@@ -80,8 +83,8 @@ complete_instru_list = (
 DATA_DIR = config.DATA_DIR
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-INSTRUMENT_DATA_FILE = DATA_DIR / 'complete_instru_list.json'
-
+INSTRUMENT_DATA_FILE = config.INSTRUMENT_KEY_PATH
+INSTRUMENT_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # Download / cache
@@ -101,16 +104,18 @@ def download_and_save_instrument_list(force_download: bool = False) -> list:
     """
     # Check if local file exists and is recent enough
     if INSTRUMENT_DATA_FILE.exists() and not force_download:
-        file_mtime = datetime.fromtimestamp(INSTRUMENT_DATA_FILE.stat().st_mtime)
-        today_7am = datetime.today().replace(hour=7, minute=0, second=0, microsecond=0)
+        # Get file modification time as timezone-aware datetime (IST)
+        ist_tz = ZoneInfo("Asia/Kolkata")
+        file_mtime = datetime.fromtimestamp(INSTRUMENT_DATA_FILE.stat().st_mtime, tz=ist_tz)
+        today_7am_ist = datetime.now(tz=ist_tz).replace(hour=7, minute=0, second=0, microsecond=0)
 
-        if file_mtime >= today_7am:
+        if file_mtime >= today_7am_ist:
             logger.info(f"Loading instrument data from local cache: {INSTRUMENT_DATA_FILE}")
             with open(INSTRUMENT_DATA_FILE, 'r') as f:
                 return json.load(f)
         else:
             logger.info(
-                f"File last modified at {file_mtime}, which is before today's 7 AM. "
+                f"File last modified at {file_mtime}, which is before today's 7 AM IST. "
                 "Re-downloading..."
             )
 

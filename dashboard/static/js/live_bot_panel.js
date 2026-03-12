@@ -111,7 +111,7 @@ async function checkAuth() {
  * Start the bot. In paper mode, runs a simulated tick loop.
  * In live mode, shows a confirmation dialog first.
  */
-function startBot() {
+async function startBot() {
   if (_bot.running) return;
 
   const mode    = document.getElementById('bot-mode')?.value    || 'paper';
@@ -119,6 +119,9 @@ function startBot() {
   const maxLoss = parseFloat(document.getElementById('bot-max-daily-loss')?.value) || 2;
   const strategy= document.getElementById('bot-strategy')?.value  || '—';
   const symbol  = document.getElementById('bot-symbol')?.value     || 'NIFTY';
+  const timeframe = document.getElementById('bot-timeframe')?.value || 'minute';
+  const risk    = parseFloat(document.getElementById('bot-risk')?.value) || 2;
+  const allowShort = document.getElementById('bot-allow-short')?.checked || false;
 
   // Warn before switching to live mode
   if (mode === 'live') {
@@ -158,8 +161,40 @@ function startBot() {
     _bot.intervalId = setInterval(() => _botTick(symbol, capital), 5000);
     _botLog('info', 'Paper trading simulation active. Ticks every 5 seconds.');
   } else {
-    _botLog('warn', 'Live mode: Phase 5 WebSocket integration coming in next build.');
-    _botLog('info', 'Live order routing not yet connected. Monitor Upstox app for orders.');
+    // call backend to start live bot
+    try {
+      const payload = {
+        strategy_name: strategy,
+        strategy_params: {},
+        symbol,
+        timeframe,
+        mode,
+        capital,
+        risk_pct: risk,
+        max_daily_loss_pct: maxLoss,
+        allow_short: allowShort,
+      };
+      const res = await fetch('/api/live/start', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'start failed');
+      }
+      _botLog('ok', 'Live bot start requested. Polling status...');
+      _bot.pollInterval = setInterval(_botPollStatus, 1000);
+    } catch (e) {
+      _botLog('error', 'Failed to start live bot: ' + e.message);
+      // revert UI state
+      _bot.running = false;
+      _botSetStatus('stopped');
+      document.getElementById('stop-btn').disabled = true;
+      document.getElementById('start-btn').disabled = false;
+      document.getElementById('start-btn').textContent = '▶ Start Paper';
+      return;
+    }
   }
 }
 
@@ -167,12 +202,25 @@ function startBot() {
 /**
  * Stop the bot — cancels the simulation tick and squares off open positions.
  */
-function stopBot() {
+async function stopBot() {
   if (!_bot.running) return;
 
-  if (_bot.intervalId) {
-    clearInterval(_bot.intervalId);
-    _bot.intervalId = null;
+  if (_bot.mode === 'paper') {
+    if (_bot.intervalId) {
+      clearInterval(_bot.intervalId);
+      _bot.intervalId = null;
+    }
+  } else {
+    if (_bot.pollInterval) {
+      clearInterval(_bot.pollInterval);
+      _bot.pollInterval = null;
+    }
+    try {
+      await fetch('/api/live/stop', {method: 'POST'});
+      _botLog('info', 'Sent stop request to server.');
+    } catch (e) {
+      _botLog('warn', 'Stop request failed: ' + e.message);
+    }
   }
 
   // Close all open positions at last known price
@@ -315,6 +363,64 @@ function _botClosePosition(pos, exitPrice, reason) {
   );
 }
 
+
+// ── Server polling helpers ───────────────────────────────────────────────────
+
+/**
+ * Poll the backend /api/live/status endpoint and sync state to _bot.
+ */
+async function _botPollStatus() {
+  try {
+    const res = await fetch('/api/live/status');
+    if (!res.ok) return;
+    const data = await res.json();
+
+    _bot.realisedPnl  = data.day_pnl || 0;
+    _bot.unrealisedPnl= data.open_positions
+      ? Object.values(data.open_positions).reduce((sum,p)=>sum+(p.unrealised_pnl||0),0)
+      : 0;
+    _bot.tradesToday  = data.closed_trades ? data.closed_trades.length : 0;
+
+    // convert open_positions dict into _bot.positions array
+    _bot.positions = [];
+    if (data.open_positions) {
+      for (const [sym, p] of Object.entries(data.open_positions)) {
+        _bot.positions.push({
+          symbol: sym,
+          dir:    p.direction === 'LONG' ? 1 : -1,
+          qty:    p.quantity,
+          entry:  p.entry_price,
+          ltp:    p.ltp,
+          stop:   p.stop_loss || 0,
+          unrealised: p.unrealised_pnl || 0,
+          closed: false,
+        });
+      }
+    }
+
+    // closed trades
+    _bot.completed = [];
+    if (data.closed_trades) {
+      let n = 0;
+      for (const t of data.closed_trades) {
+        n++;
+        _bot.completed.push({
+          n,
+          symbol: t.symbol,
+          dir:    t.direction === 'LONG' ? 1 : -1,
+          entry:  t.entry_price,
+          exit:   t.exit_price,
+          pnl:    t.pnl,
+          reason: t.exit_reason,
+        });
+      }
+    }
+
+    _botRefreshUI();
+  } catch (e) {
+    console.error('poll error', e);
+  }
+}
 
 // ── UI Refresh ────────────────────────────────────────────────────────────────
 

@@ -155,7 +155,7 @@ def _discover_strategies() -> Dict[str, Dict]:
     registry: Dict[str, Dict] = {}
 
     try:
-        from strategies.base_strategy import BaseStrategy as _Base
+        from strategies.base_strategy_github import BaseStrategy as _Base
     except ImportError:
         logger.warning("strategies.base_strategy.BaseStrategy not found — "
                        "strategy auto-discovery disabled")
@@ -763,7 +763,7 @@ async def run_screener(req: ScreenerRequest):
     - Individual symbol errors → logged, skipped (scan never crashes)
     - rank_by column absent → screener falls back to 'close'
     """
-    from screener.screener import Screener, ScreenerConfig
+    from screener.screener_v2 import Screener, ScreenerConfig
 
     symbols = _list_available_symbols()[:200]   # cap to prevent timeout
 

@@ -1,5 +1,5 @@
 """
-backtester/commission.py
+broker/upstox/commission.py
 -------------------------
 Exact Upstox brokerage and regulatory charge model.
 
