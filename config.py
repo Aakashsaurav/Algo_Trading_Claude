@@ -58,7 +58,7 @@ class AppConfig:
     AUTH_URL: str = "https://api.upstox.com/v2/login/authorization/token"
 
     # --- Token Storage ---
-    TOKEN_FILE_PATH: Path = BASE_DIR / os.getenv("TOKEN_FILE_PATH", "data/token.json")
+    TOKEN_FILE_PATH: Path = BASE_DIR / os.getenv("TOKEN_FILE_PATH", "broker/upstox/token.json")
 
     # --- Capital & Risk ---
     TOTAL_CAPITAL: float = float(os.getenv("TOTAL_CAPITAL", "500000"))
@@ -97,9 +97,9 @@ class AppConfig:
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
 
     # --- NSE / Instrument Settings ---
-    # Upstox provides a daily instrument dump CSV at this URL
-    INSTRUMENT_CSV_URL: str = "https://assets.upstox.com/market-quote/instruments/exchange/complete.csv.gz"
-    INSTRUMENT_CSV_PATH: Path = DATA_DIR / "instruments.csv"
+    # Upstox provides a daily instrument dump at this URL
+    INSTRUMENT_KEY_URL: str = "https://assets.upstox.com/market-quote/instruments/exchange/complete.json.gz"
+    INSTRUMENT_KEY_PATH: Path = BASE_DIR / "broker" / "upstox" / "complete_instru_list.json"
 
     def __init__(self):
         """Create all required directories on startup."""
