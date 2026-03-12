@@ -24,7 +24,7 @@ PARAMETERS:
 """
 
 import pandas as pd
-from strategies.base_strategy import BaseStrategy, Signal, Action, PortfolioState
+from strategies.base_strategy_github import BaseStrategy, Signal, Action, PortfolioState
 from indicators.volatility import bollinger_bands, keltner_channels, bb_squeeze, atr
 
 

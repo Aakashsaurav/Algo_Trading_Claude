@@ -19,7 +19,7 @@ PARAMETERS:
 """
 
 import pandas as pd
-from strategies.base_strategy import BaseStrategy, Signal, Action, PortfolioState
+from strategies.base_strategy_github import BaseStrategy, Signal, Action, PortfolioState
 from indicators.oscillators import rsi
 from indicators.volatility import atr
 

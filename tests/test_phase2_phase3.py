@@ -893,7 +893,7 @@ class TestBaseStrategyValidation(unittest.TestCase):
     """BaseStrategy._validate_and_prepare() — input checking."""
 
     def setUp(self):
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
         self.strategy = EMACrossover(9, 21)
         self.df       = _make_ohlcv(200)
 
@@ -936,16 +936,16 @@ class TestEMACrossoverStrategy(unittest.TestCase):
     """EMACrossover — buy on fast>slow crossover, sell on fast<slow crossunder."""
 
     def setUp(self):
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
         self.df = _make_ohlcv(300)
 
     def test_fast_must_be_less_than_slow(self):
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
         with self.assertRaises(ValueError):
             EMACrossover(fast_period=21, slow_period=9)
 
     def test_indicator_columns_added(self):
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
         strategy = EMACrossover(9, 21)
         result   = strategy.generate_signals(self.df)
         self.assertIn("ema_fast", result.columns)
@@ -953,7 +953,7 @@ class TestEMACrossoverStrategy(unittest.TestCase):
 
     def test_buy_signal_when_fast_above_slow(self):
         """A +1 signal must coincide with ema_fast > ema_slow."""
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
         strategy = EMACrossover(9, 21)
         result   = strategy.generate_signals(self.df)
         buys     = result[result["signal"] == 1]
@@ -966,7 +966,7 @@ class TestEMACrossoverStrategy(unittest.TestCase):
             )
 
     def test_get_parameters_returns_periods(self):
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
         strat  = EMACrossover(9, 21)
         params = strat.get_parameters()
         self.assertEqual(params["fast_period"], 9)
@@ -977,7 +977,7 @@ class TestRSIMeanReversionStrategy(unittest.TestCase):
     """RSI Mean Reversion — buy oversold, sell overbought."""
 
     def setUp(self):
-        from strategies.base import RSIMeanReversion
+        from strategies.base_strategy_github import RSIMeanReversion
         self.df = _make_ohlcv(300)
         self.strat = RSIMeanReversion(14, 30, 70, 200)
 
@@ -990,7 +990,7 @@ class TestRSIMeanReversionStrategy(unittest.TestCase):
         self.assertIn("sma_filter", result.columns)
 
     def test_no_sma_filter_when_period_zero(self):
-        from strategies.base import RSIMeanReversion
+        from strategies.base_strategy_github import RSIMeanReversion
         strat  = RSIMeanReversion(14, 30, 70, sma_filter_period=0)
         result = strat.generate_signals(self.df)
         # sma_filter should be all NaN when disabled
@@ -1016,7 +1016,7 @@ class TestBollingerBandStrategy(unittest.TestCase):
         self.df = _make_ohlcv(300)
 
     def test_reversion_mode_buy_at_lower_band(self):
-        from strategies.base import BollingerBandStrategy
+        from strategies.base_strategy_github import BollingerBandStrategy
         strat  = BollingerBandStrategy(20, 2.0, "reversion")
         result = strat.generate_signals(self.df)
         buys   = result[result["signal"] == 1]
@@ -1029,19 +1029,19 @@ class TestBollingerBandStrategy(unittest.TestCase):
             )
 
     def test_breakout_mode_sell_at_lower_band(self):
-        from strategies.base import BollingerBandStrategy
+        from strategies.base_strategy_github import BollingerBandStrategy
         strat  = BollingerBandStrategy(20, 2.0, "breakout")
         result = strat.generate_signals(self.df)
         self.assertIn("signal", result.columns)
         self.assertTrue(result["signal"].isin([-1, 0, 1]).all())
 
     def test_invalid_mode_raises(self):
-        from strategies.base import BollingerBandStrategy
+        from strategies.base_strategy_github import BollingerBandStrategy
         with self.assertRaises(ValueError):
             BollingerBandStrategy(20, 2.0, "invalid_mode")
 
     def test_bb_columns_present_in_output(self):
-        from strategies.base import BollingerBandStrategy
+        from strategies.base_strategy_github import BollingerBandStrategy
         strat  = BollingerBandStrategy(20, 2.0, "reversion")
         result = strat.generate_signals(self.df)
         for col in ("bb_upper", "bb_middle", "bb_lower"):
@@ -1052,7 +1052,7 @@ class TestMACDStrategy(unittest.TestCase):
     """MACD Crossover Strategy."""
 
     def setUp(self):
-        from strategies.base import MACDStrategy
+        from strategies.base_strategy_github import MACDStrategy
         self.df    = _make_ohlcv(300)
         self.strat = MACDStrategy(12, 26, 9)
 
@@ -1085,7 +1085,7 @@ class TestSupertrendStrategy(unittest.TestCase):
     """Supertrend Strategy — direction flip signals."""
 
     def setUp(self):
-        from strategies.base import SupertrendStrategy
+        from strategies.base_strategy_github import SupertrendStrategy
         self.df    = _make_ohlcv(300)
         self.strat = SupertrendStrategy(10, 3.0)
 
@@ -1113,7 +1113,7 @@ class TestBacktestEngineBasic(unittest.TestCase):
     def setUp(self):
         from backtester.engine import BacktestEngine, BacktestConfig
         from backtester.commission import Segment
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
 
         self.df       = _make_ohlcv(300)
         self.strategy = EMACrossover(9, 21)
@@ -1190,10 +1190,36 @@ class TestBacktestEngineBasic(unittest.TestCase):
                 msg=f"net_pnl accounting error for trade: {trade.to_dict()}"
             )
 
+    def test_duration_and_bars_computation(self):
+        """Ensure duration string and bar count reflect actual elapsed time."""
+        # create 10 bars of 5‑minute data so we can easily calculate expectation
+        df = _make_ohlcv(n=10, freq="5T")
+        # build a simple signal series: buy on first bar, sell on sixth bar
+        sig = pd.Series(0, index=df.index, name="signal")
+        sig.iloc[0] = 1
+        sig.iloc[5] = -1
+        df = df.copy()
+        df["signal"] = sig
+
+        # use a dummy strategy that returns the dataframe unchanged
+        from strategies.base_strategy_github import BaseStrategy
+        class PassThroughStrategy(BaseStrategy):
+            def __init__(self):
+                super().__init__(name="pass")
+            def generate_signals(self, df2):
+                return df2
+
+        result = self.engine.run(df, PassThroughStrategy(), symbol="TEST")
+        self.assertEqual(len(result.trade_log), 1)
+        trade = result.trade_log[0]
+        # we expected 5 bars held (entry at bar0, exit executed on bar5 open)
+        self.assertEqual(trade.duration_bars, 5)
+        self.assertEqual(trade.duration, "0d 00h 25m")
+
     def test_missing_signal_column_raises(self):
         """Engine must raise ValueError if strategy doesn't add 'signal' column."""
         from backtester.engine import BacktestEngine
-        from strategies.base import BaseStrategy
+        from strategies.base_strategy_github import BaseStrategy
 
         class BadStrategy(BaseStrategy):
             def generate_signals(self, df):
@@ -1232,6 +1258,68 @@ class TestBacktestEngineBasic(unittest.TestCase):
             self.engine.run(tiny_df, self.strategy, symbol="TEST")
 
 
+class TestRSISupertrendRelativeStrength(unittest.TestCase):
+    """Unit tests for the RSI+Supertrend+RelativeStrength composite strategy."""
+
+    def setUp(self):
+        from backtester.engine import BacktestEngine, BacktestConfig
+        from backtester.commission import Segment
+        from strategies.base_strategy_github import RSISupertrendRelativeStrength
+
+        # create a simple upward-trending price series
+        self.df = _make_ohlcv(n=200)
+        # overwrite close/open/high/low to make a clean uptrend
+        self.df["close"] = pd.Series(
+            np.linspace(1000, 1200, len(self.df)), index=self.df.index
+        )
+        self.df["open"]  = self.df["close"] - 0.01
+        self.df["high"]  = self.df["close"] + 0.01
+        self.df["low"]   = self.df["close"] - 0.02
+        self.df["volume"] = 1_000_000
+
+        # benchmark is flat so RS > 0 whenever stock rises over rs_period
+        self.df["bench_close"] = 1000.0
+
+        config = BacktestConfig(
+            initial_capital=500_000,
+            segment=Segment.EQUITY_DELIVERY,
+            capital_risk_pct=0.02,
+            allow_shorting=False,
+        )
+        self.engine   = BacktestEngine(config)
+        self.strategy = RSISupertrendRelativeStrength(
+            rsi_period=14, super_period=10, super_multiplier=3.0, rs_period=55
+        )
+
+    def test_strategy_generates_trades(self):
+        """Strategy should produce at least one long trade on an uptrend."""
+        result = self.engine.run(self.df, self.strategy, symbol="TEST")
+        self.assertGreater(len(result.trade_log), 0,
+                           "No trades generated by strategy on strong uptrend")
+        # ensure all trades are long (direction == 1)
+        for trade in result.trade_log:
+            self.assertEqual(trade.direction, 1,
+                             f"Unexpected short trade: {trade.to_dict()}")
+
+    def test_signals_follow_logic(self):
+        """Verify that signals only appear when the three conditions are met."""
+        sig_df = self.strategy.generate_signals(self.df)
+        rsi_vals = sig_df["rsi"]
+        st_dir   = sig_df["st_direction"]
+        rs_vals  = sig_df["rs"]
+        long_cond = (rsi_vals > 50) & (st_dir == 1) & (rs_vals > 0)
+
+        # every long signal should satisfy the condition
+        longs = sig_df[sig_df["signal"] == 1]
+        self.assertTrue(long_cond.loc[longs.index].all(),
+                        "A long signal was generated when conditions were not met")
+
+        # every sell signal should occur when the condition is false
+        sells = sig_df[sig_df["signal"] == -1]
+        self.assertTrue((~long_cond.loc[sells.index]).all(),
+                        "A sell signal was generated while long-conditions still held")
+
+
 class TestExecutionModel(unittest.TestCase):
     """
     Next-bar-open execution model — the most critical anti-bias test.
@@ -1260,7 +1348,7 @@ class TestExecutionModel(unittest.TestCase):
         Construct a DataFrame where bar 50 has signal=+1 and bar 51 has a
         known, distinctive open price. The trade entry must be at that open.
         """
-        from strategies.base import BaseStrategy
+        from strategies.base_strategy_github import BaseStrategy
 
         df = _make_ohlcv(200)
 
@@ -1308,7 +1396,7 @@ class TestPositionSizing(unittest.TestCase):
         self.Engine  = BacktestEngine
 
     def _run_with_fixed_qty(self, qty):
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
         config = self.Config(
             initial_capital=500_000,
             segment=self.Segment.EQUITY_DELIVERY,
@@ -1328,7 +1416,7 @@ class TestPositionSizing(unittest.TestCase):
 
     def test_lot_size_rounding(self):
         """When lot_size > 1, quantity must be a multiple of lot_size."""
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
         config = self.Config(
             initial_capital=500_000,
             segment=self.Segment.EQUITY_FUTURES,
@@ -1367,7 +1455,7 @@ class TestPyramiding(unittest.TestCase):
         We verify this indirectly: if we generate 10 consecutive buy signals,
         only the first 5 should be executed.
         """
-        from strategies.base import BaseStrategy
+        from strategies.base_strategy_github import BaseStrategy
 
         class BurstBuyStrategy(BaseStrategy):
             """Emits 10 buy signals in a row, then 10 sell signals."""
@@ -1409,7 +1497,7 @@ class TestFIFOClose(unittest.TestCase):
         Open 3 positions at known prices. Close with one sell signal.
         The closed trade should correspond to the FIRST entry price.
         """
-        from strategies.base import BaseStrategy
+        from strategies.base_strategy_github import BaseStrategy
 
         ENTRY_PRICE_1 = 1001.0
         ENTRY_PRICE_2 = 1002.0
@@ -1458,7 +1546,7 @@ class TestShorting(unittest.TestCase):
         self.Engine  = BacktestEngine
 
     def _make_short_strategy(self):
-        from strategies.base import BaseStrategy
+        from strategies.base_strategy_github import BaseStrategy
         class ShortStrategy(BaseStrategy):
             def generate_signals(self, df):
                 df = df.copy()
@@ -1507,7 +1595,7 @@ class TestIntradaySquareoff(unittest.TestCase):
         """
         from backtester.engine import BacktestEngine, BacktestConfig
         from backtester.commission import Segment
-        from strategies.base import BaseStrategy
+        from strategies.base_strategy_github import BaseStrategy
 
         # Build one day of 1-minute bars (375 bars: 9:15 to 15:29)
         n     = 375
@@ -1553,7 +1641,7 @@ class TestBacktestMetrics(unittest.TestCase):
     def setUp(self):
         from backtester.engine import BacktestEngine, BacktestConfig, BacktestResult
         from backtester.commission import Segment
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
 
         df         = _make_ohlcv(400)
         config     = BacktestConfig(
@@ -1651,7 +1739,7 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_strategy_with_no_signals_produces_no_trades(self):
         """A strategy that always returns signal=0 must produce zero trades."""
-        from strategies.base import BaseStrategy
+        from strategies.base_strategy_github import BaseStrategy
         class FlatStrategy(BaseStrategy):
             def generate_signals(self, df):
                 df = df.copy()
@@ -1664,7 +1752,7 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_all_buy_signals_eventually_closed_at_end(self):
         """Any position still open at the last bar must be force-closed."""
-        from strategies.base import BaseStrategy
+        from strategies.base_strategy_github import BaseStrategy
         class AlwaysBuyStrategy(BaseStrategy):
             def generate_signals(self, df):
                 df = df.copy()
@@ -1690,7 +1778,7 @@ class TestEdgeCases(unittest.TestCase):
         df["low"]   = 1000.0
         df["close"] = 1000.0
 
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
         strategy = EMACrossover(9, 21)
 
         try:
@@ -1701,7 +1789,7 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_missing_open_price_skipped_gracefully(self):
         """Bars with open=NaN or open=0 must be skipped without crashing."""
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
         df = _make_ohlcv(200)
         # Inject NaN opens at a few bars
         df.iloc[50, df.columns.get_loc("open")] = np.nan
@@ -1724,7 +1812,7 @@ class TestReportGenerator(unittest.TestCase):
     def setUp(self):
         from backtester.engine import BacktestEngine, BacktestConfig
         from backtester.commission import Segment
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
 
         df         = _make_ohlcv(300)
         config     = BacktestConfig(
@@ -1770,7 +1858,7 @@ class TestReportGenerator(unittest.TestCase):
         from backtester.report import generate_report
         from backtester.engine import BacktestEngine, BacktestConfig
         from backtester.commission import Segment
-        from strategies.base import BaseStrategy
+        from strategies.base_strategy_github import BaseStrategy
 
         class NoSignalStrategy(BaseStrategy):
             def generate_signals(self, df):
@@ -1828,7 +1916,7 @@ class TestReportGenerator(unittest.TestCase):
         render all panels without error.
         """
         from backtester.report import generate_report
-        from strategies.base import MACDStrategy
+        from strategies.base_strategy_github import MACDStrategy
 
         df       = _make_ohlcv(300)
         from backtester.engine import BacktestEngine, BacktestConfig
@@ -1866,7 +1954,7 @@ class TestLookAheadBias(unittest.TestCase):
         If a strategy uses future data (look-ahead bias), older signals
         would change when new bars are appended.
         """
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
 
         df_short  = _make_ohlcv(200)
         df_long   = _make_ohlcv(250)   # 50 extra bars appended
@@ -1928,7 +2016,7 @@ class TestSurvivorshipBias(unittest.TestCase):
         """
         from backtester.engine import BacktestEngine, BacktestConfig
         from backtester.commission import Segment
-        from strategies.base import EMACrossover
+        from strategies.base_strategy_github import EMACrossover
 
         df     = _make_ohlcv(300)
         config = BacktestConfig(segment=Segment.EQUITY_DELIVERY, fixed_quantity=10)

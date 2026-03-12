@@ -146,7 +146,7 @@ class ScreenerRequest(BaseModel):
 
 def _load_strategy(name: str, params: dict):
     """Dynamically load a strategy class by name and instantiate it."""
-    from strategies.base import (
+    from strategies.base_strategy_github import (
         EMACrossover, RSIMeanReversion, BollingerBandStrategy,
         MACDStrategy, SupertrendStrategy,
     )
@@ -420,7 +420,7 @@ async def run_optimizer(req: OptimizeRequest):
     """
     from backtester.engine_v2 import BacktestEngineV2, BacktestConfigV2
     from backtester.commission import Segment
-    from strategies.base import (
+    from strategies.base_strategy_github import (
         EMACrossover, RSIMeanReversion, BollingerBandStrategy,
         MACDStrategy, SupertrendStrategy,
     )
@@ -465,7 +465,7 @@ async def run_screener(req: ScreenerRequest):
 
     Returns all symbols where the strategy's last signal matches signal_type.
     """
-    from screener.screener import Screener, ScreenerConfig
+    from screener.screener_v2 import Screener, ScreenerConfig
 
     # Load available symbols
     try:

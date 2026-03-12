@@ -1,5 +1,5 @@
 """
-broker/auth.py
+broker/upstox/auth.py
 --------------
 Handles Upstox OAuth2 Authentication and daily token management.
 
@@ -11,7 +11,7 @@ Step 1 — Get Authorization Code:
     You open a special Upstox URL in your browser.
     You log in with your Upstox credentials.
     Upstox redirects your browser to your redirect_uri with a 'code' in the URL.
-    Example: http://127.0.0.1:8000/callback?code=abc123
+    Example: https://127.0.0.1:5000/callback?code=abc123
 
 Step 2 — Exchange Code for Access Token:
     You take that 'code' and POST it to Upstox along with your API key + secret.
@@ -24,14 +24,17 @@ IMPORTANT:
     - Our scheduler (Phase 7) will automate this at 9:00 AM daily.
 
 USAGE:
-    from broker.auth import AuthManager
+    from broker.upstox.auth import AuthManager
     auth = AuthManager()
 
     # Step 1: Get the login URL and open it in browser
     url = auth.get_login_url()
 
-    # Step 2: After redirect, paste the full redirect URL or just the code
+    # Step 2: After redirect, you can either:
+    # Option A: Use just the code from the URL
     token = auth.generate_token(auth_code="abc123")
+    # Option B: Use the full redirect URL (recommended)
+    token = auth.generate_token_from_url("https://127.0.0.1:5000/?code=abc123")
 
     # All subsequent uses — just get a valid token:
     token = auth.get_valid_token()
@@ -197,7 +200,7 @@ class AuthManager:
 
         Args:
             redirect_url (str): The full URL you were redirected to after login.
-                                 e.g. http://127.0.0.1:5000/
+                                 e.g. https://127.0.0.1:5000/
 
         Returns:
             dict: Token data.
