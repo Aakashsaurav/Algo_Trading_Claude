@@ -16,8 +16,11 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 
+<<<<<<< HEAD
 from backtester.models import _HERE
 
+=======
+>>>>>>> 8d072798ed841b92b7056b98b3d612023cbaf223
 # ── Load the .env file from the project root ──────────────────────────────────
 # This must happen before we read any os.getenv() values.
 BASE_DIR = Path(__file__).resolve().parent
@@ -84,10 +87,13 @@ class AppConfig:
     MINUTE_DIR: Path = OHLCV_DIR / "minute"
     WEEKLY_DIR: Path = OHLCV_DIR / "weekly"
     SQLITE_DIR: Path = DATA_DIR / "sqlite"
+<<<<<<< HEAD
     BACKTEST_DIR: Path = BASE_DIR / "backtest_output"
     OUTPUT_TRADE = BACKTEST_DIR / "trade"
     OUTPUT_RAW   = BACKTEST_DIR / "raw_data"
     OUTPUT_CHART = BACKTEST_DIR / "chart"
+=======
+>>>>>>> 8d072798ed841b92b7056b98b3d612023cbaf223
 
     # --- Database File Paths ---
     METADATA_DB: Path = SQLITE_DIR / "metadata.db"

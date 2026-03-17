@@ -4,6 +4,7 @@
 # ============================================================
 
 # --- Core ---
+<<<<<<< HEAD
 python-dotenv          # Load .env variables
 requests               # HTTP client for API calls
 
@@ -15,12 +16,26 @@ pyarrow                # Parquet read/write (fast columnar storage)
 # --- Web Framework (Backend API) ---
 fastapi                # API server for the dashboard
 uvicorn                # ASGI server to run FastAPI
+=======
+python-dotenv==1.0.0          # Load .env variables
+requests==2.31.0              # HTTP client for API calls
+
+# --- Data & Analysis ---
+pandas==2.1.4                 # DataFrames — the backbone of all data work
+numpy==1.26.2                 # Numerical operations
+pyarrow==14.0.2               # Parquet read/write (fast columnar storage)
+
+# --- Web Framework (Backend API) ---
+fastapi==0.109.0              # API server for the dashboard
+uvicorn==0.27.0               # ASGI server to run FastAPI
+>>>>>>> 8d072798ed841b92b7056b98b3d612023cbaf223
 flask 
 pyopenssl
 python-multipart 
 aiofiles
 
 # --- Scheduling ---
+<<<<<<< HEAD
 APScheduler            # Run jobs at market open/close, EOD updates
 
 # --- Broker SDK ---
@@ -35,6 +50,22 @@ pytest-mock            # Mock objects for testing API calls
 
 # --- Notifications (set up in Phase 7) ---
 python-telegram-bot    # Telegram alerts
+=======
+APScheduler==3.10.4           # Run jobs at market open/close, EOD updates
+
+# --- Broker SDK ---
+upstox-python-sdk==2.19.0     # Official Upstox Python SDK
+
+# --- Database ---
+sqlalchemy==2.0.25            # ORM for SQLite / PostgreSQL
+
+# --- Testing ---
+pytest==7.4.4                 # Test framework
+pytest-mock==3.14.0           # Mock objects for testing API calls
+
+# --- Notifications (set up in Phase 7) ---
+python-telegram-bot==20.7     # Telegram alerts
+>>>>>>> 8d072798ed841b92b7056b98b3d612023cbaf223
 
 # --- Dashboard Charts (used in templates) ---
 matplotlib
@@ -42,6 +73,12 @@ matplotlib
 # No Python package needed for frontend charting
 
 #Indicator libraries
+<<<<<<< HEAD
 #pandas-ta
 #ta
 TA-Lib
+=======
+pandas-ta
+ta
+#TA-Lib
+>>>>>>> 8d072798ed841b92b7056b98b3d612023cbaf223

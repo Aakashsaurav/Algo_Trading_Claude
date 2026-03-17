@@ -1,129 +1,60 @@
 """
-<<<<<<< HEAD
-backtester/engine.py
----------------------
-Public API for the AlgoDesk backtesting engine.
-
-This is the only file you need to import.  All implementation is in the
-sub-modules it orchestrates:
-
-    models.py         — data structures (BacktestConfig, Trade, Position, …)
-    event_loop.py     — bar-by-bar simulation
-    fill_engine.py    — order fill and stop logic
-    position_sizer.py — position sizing
-    performance.py    — metrics computation
-    optimizer.py      — parameter search
-
-QUICK START
-===========
-::
-
-    from backtester.engine import BacktestEngine
-    from backtester.models import BacktestConfig, OrderType
-    from broker.upstox.commission import Segment
-    from strategies.base import EMACrossover
-
-    cfg = BacktestConfig(
-        initial_capital    = 500_000,
-        segment            = Segment.EQUITY_DELIVERY,
-        default_order_type = OrderType.MARKET,
-        stop_loss_pct      = 2.0,
-        save_trade_log     = True,
-        save_chart         = True,
-        run_label          = "ema_infy_2023",
-    )
-    engine   = BacktestEngine(cfg)
-    strategy = EMACrossover(fast_period=9, slow_period=21)
-
-    result = engine.run(df, strategy, symbol="INFY")
-    print(result.summary())
-
-MULTI-SYMBOL
-============
-::
-
-    results = engine.run_portfolio(
-        {"INFY": df_infy, "TCS": df_tcs},
-        strategy,
-        label="portfolio_run",
-    )
-
-OPTIMISATION
-============
-::
-
-    from backtester.optimizer import Optimizer
-    opt = Optimizer(cfg)
-    top = opt.run(df, EMACrossover, {"fast_period": [5,9,13], "slow_period": [21,34]})
-    print(top)
-"""
-
-from __future__ import annotations
-
-import logging
-from pathlib import Path
-from typing import Dict, List, Optional
-
-import pandas as pd
-
-from backtester.models import BacktestConfig, BacktestResult
-from backtester.event_loop import run_event_loop
-
-from config import config
-
-logger = logging.getLogger(__name__)
-
-_HERE = Path(__file__).resolve().parent.parent   # project root
-#OUTPUT_TRADE = _HERE / "strategies" / "output" / "trade"
-#OUTPUT_RAW   = _HERE / "strategies" / "output" / "raw_data"
-#OUTPUT_CHART = _HERE / "strategies" / "output" / "chart"
-
-OUTPUT_TRADE = config.OUTPUT_TRADE
-OUTPUT_RAW   = config.OUTPUT_RAW
-OUTPUT_CHART = config.OUTPUT_CHART
-
-=======
-Renamed from backtester/engine_v3.py
-backtester/engine.py
+backtester/engine_v2.py
 ------------------------
-Merged backtesting engine combining engine.py and engine_v2.py.
+Enhanced backtesting engine — Phase 4 upgrade.
 
-FEATURES:
-  • Basic backtesting (from engine.py)
-  • Advanced order types: LIMIT, STOP, STOP-LIMIT, TRAILING STOP
-  • Output flags (trade log, raw data, chart, summary)
-  • Multi-security portfolio runs
-  • Parameter optimization (grid/random search)
-  • Full Upstox commission modeling
+NEW FEATURES vs engine.py:
+  1. Advanced order types: LIMIT, STOP, STOP-LIMIT, TRAILING STOP
+  2. Output flags (all optional, all False by default):
+     - save_trade_log   → strategies/output/trade/
+     - save_raw_data    → strategies/output/raw_data/
+     - save_chart       → strategies/output/chart/
+     - generate_summary → strategies/output/trade/ (multi-security sheet)
+  3. Multi-security run — run_portfolio() executes on a list of symbols
+     and aggregates all results into combined files.
+  4. Parameter Optimizer — fast grid/random search using pre-computed signals.
+  5. External indicator library support via IndicatorBridge.
+
+THEORY — ORDER TYPE EXECUTION PRIORITY (per bar):
+  On each bar i, before executing new signal orders, we check:
+    1. Update trailing stops (adjust level based on price movement)
+    2. Check if any trailing stop was triggered → close position at fill price
+    3. Check if any stop-loss order was triggered → close position
+    4. Check if any stop-limit order fill condition is met
+    5. Check if any pending limit entry order fills
+    6. Execute signal from previous bar (market order)
+  This priority ensures stops always take precedence over new signals.
 
 USAGE:
-    from backtester.engine_v3 import BacktestEngineV3, BacktestConfigV3
+    from backtester.engine_v2 import BacktestEngineV2, BacktestConfigV2
     from backtester.order_types import OrderType
+    from strategies.base import EMACrossover
 
-    config = BacktestConfigV3(
+    config = BacktestConfigV2(
         initial_capital   = 500_000,
+        # ── Advanced order types ──────────────────
         default_order_type = OrderType.LIMIT,
-        limit_offset_pct   = 0.2,
-        stop_loss_pct      = 2.0,
-        trailing_stop_pct  = 1.5,
+        limit_offset_pct   = 0.2,      # Enter 0.2% below signal close
+        stop_loss_pct      = 2.0,      # 2% stop-loss on each trade
+        trailing_stop_pct  = 1.5,      # 1.5% trailing stop
+        # ── Output flags (all False by default) ──
         save_trade_log     = True,
         save_raw_data      = True,
         save_chart         = True,
         generate_summary   = True,
-        run_label          = "merged_engine_test",
+        run_label          = "ema_cross_nifty500",
     )
-    engine   = BacktestEngineV3(config)
-    strategy = SomeStrategy()
+    engine   = BacktestEngineV2(config)
+    strategy = EMACrossover(9, 21)
 
     # Single symbol
     result = engine.run(df, strategy, symbol="INFY")
 
-    # Multi-symbol portfolio
-    results = engine.run_portfolio({symbol: df_dict[symbol] for symbol in symbols}, strategy)
-
-    # Parameter optimization
-    param_grid = {'fast_period': [5,9,13], 'slow_period': [21,34,50]}
-    top_results = engine.optimize(df, StrategyClass, param_grid, symbol='INFY')
+    # Multi-symbol (all outputs aggregated to single files)
+    results = engine.run_portfolio(
+        {symbol: df_dict[symbol] for symbol in symbols},
+        strategy,
+    )
 """
 
 import logging
@@ -137,7 +68,10 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from broker.upstox.commission import CommissionModel, Segment
+from backtester.commission import CommissionModel, Segment
+from backtester.engine import (
+    BacktestConfig, Position, Trade, BacktestResult
+)
 from backtester.order_types import (
     OrderType, PendingOrder, StopTracker, TrailingType,
     check_limit_fill, check_stop_fill, check_stop_limit_fill,
@@ -148,211 +82,43 @@ logger = logging.getLogger(__name__)
 
 INTRADAY_SQUAREOFF = dtime(15, 20)
 
-
-# =============================================================================
-# Core Data Classes (from engine.py)
-# =============================================================================
-
-@dataclass
-class BacktestConfig:
-    initial_capital:    float          = 500_000.0
-    capital_risk_pct:   float          = 0.02
-    stop_loss_atr_mult: float          = 2.0
-    fixed_quantity:     int            = 0
-    max_drawdown_pct:   float          = 0.20
-    segment:            Segment        = Segment.EQUITY_DELIVERY
-    allow_shorting:     bool           = False
-    intraday_squareoff: bool           = False
-    max_positions:      int            = 0
-    lot_size:           int            = 1
-    commission_model:   CommissionModel = field(default_factory=CommissionModel)
-
-
-@dataclass
-class Position:
-    entry_time:    pd.Timestamp
-    entry_price:   float
-    quantity:      int
-    direction:     int
-    entry_signal:  str   = ""
-    entry_charges: float = 0.0
-    # index of bar at which the position was opened (for computing duration)
-    entry_bar_idx: int   = 0
-    mae:           float = 0.0
-    mfe:           float = 0.0
-
-    def update_excursion(self, price: float) -> None:
-        move = (price - self.entry_price) * self.direction
-        self.mfe = max(self.mfe, move)
-        self.mae = min(self.mae, move)
-
-    def unrealised_pnl(self, price: float) -> float:
-        return (price - self.entry_price) * self.direction * self.quantity
-
-
-@dataclass
-class Trade:
-    symbol:              str
-    entry_time:          pd.Timestamp
-    exit_time:           pd.Timestamp
-    entry_price:         float
-    exit_price:          float
-    quantity:            int
-    direction:           int
-    direction_label:     str
-    gross_pnl:           float
-    entry_charges:       float
-    exit_charges:        float
-    total_charges:       float
-    net_pnl:             float
-    pnl_pct:             float
-    entry_signal:        str   = ""
-    exit_signal:         str   = ""
-    duration:            str   = ""
-    duration_bars:       int   = 0
-    mae:                 float = 0.0
-    mfe:                 float = 0.0
-    cumulative_portfolio: float = 0.0
-
-    def to_dict(self) -> dict:
-        return {
-            "symbol":          self.symbol,
-            "entry_time":      self.entry_time,
-            "exit_time":       self.exit_time,
-            "direction":       self.direction_label,
-            "entry_price":     round(self.entry_price,  2),
-            "exit_price":      round(self.exit_price,   2),
-            "quantity":        self.quantity,
-            "gross_pnl":       round(self.gross_pnl,    2),
-            "entry_charges":   round(self.entry_charges, 2),
-            "exit_charges":    round(self.exit_charges,  2),
-            "total_charges":   round(self.total_charges, 2),
-            "net_pnl":         round(self.net_pnl,       2),
-            "pnl_pct":         round(self.pnl_pct,       4),
-            "entry_signal":    self.entry_signal,
-            "exit_signal":     self.exit_signal,
-            "duration":        self.duration,
-            "duration_bars":   self.duration_bars,
-            "mae":             round(self.mae, 2),
-            "mfe":             round(self.mfe, 2),
-            "portfolio_value": round(self.cumulative_portfolio, 2),
-        }
-
-
-class BacktestResult:
-    def __init__(self, config, trade_log, equity_curve, drawdown, signals_df, symbol):
-        self.config       = config
-        self.trade_log    = trade_log
-        self.equity_curve = equity_curve
-        self.drawdown     = drawdown
-        self.signals_df   = signals_df
-        self.symbol       = symbol
-        self._metrics     = None
-
-    def _compute_metrics(self) -> Dict:
-        if self._metrics is not None:
-            return self._metrics
-        tl = self.trade_log
-        if not tl:
-            self._metrics = {"error": "No trades generated."}
-            return self._metrics
-
-        net_pnls = np.array([t.net_pnl      for t in tl])
-        charges  = np.array([t.total_charges for t in tl])
-        winners  = net_pnls[net_pnls > 0]
-        losers   = net_pnls[net_pnls < 0]
-        n_total  = len(tl)
-        n_win    = len(winners)
-        win_rate = n_win / n_total if n_total else 0
-        avg_win  = winners.mean() if len(winners) else 0
-        avg_loss = losers.mean()  if len(losers)  else 0
-        pf       = (abs(winners.sum()) / abs(losers.sum())
-                    if len(losers) and losers.sum() != 0 else float("inf"))
-        rr       = abs(avg_win / avg_loss) if avg_loss != 0 else float("inf")
-        exp      = net_pnls.mean()
-
-        eq = self.equity_curve.dropna()
-        max_dd   = self.drawdown.min() if not self.drawdown.empty else 0
-
-        daily_ret = eq.resample("B").last().pct_change(fill_method=None).dropna() if len(eq) > 1 else pd.Series()
-        sharpe    = ((daily_ret.mean() / daily_ret.std()) * (252**0.5)
-                     if len(daily_ret) > 1 and daily_ret.std() > 0 else 0)
-
-        start_v = self.config.initial_capital
-        end_v   = eq.iloc[-1] if not eq.empty else start_v
-        s_date  = eq.index[0].date()  if not eq.empty else None
-        e_date  = eq.index[-1].date() if not eq.empty else None
-        yrs     = max((e_date - s_date).days / 365.25, 1/365.25) if s_date and e_date else 1
-        cagr    = ((end_v / start_v) ** (1 / yrs) - 1) * 100
-
-        self._metrics = {
-            "Symbol":              self.symbol,
-            "Start Date":          str(s_date),
-            "End Date":            str(e_date),
-            "Initial Capital":     f"Rs {start_v:,.0f}",
-            "Final Portfolio":     f"Rs {end_v:,.0f}",
-            "Total Net P&L":       f"Rs {net_pnls.sum():,.2f}",
-            "Total Return":        f"{((end_v/start_v)-1)*100:.2f}%",
-            "CAGR":                f"{cagr:.2f}%",
-            "Sharpe Ratio":        f"{sharpe:.2f}",
-            "Max Drawdown":        f"{max_dd:.2f}%",
-            "Total Trades":        n_total,
-            "Winning Trades":      n_win,
-            "Losing Trades":       len(losers),
-            "Win Rate":            f"{win_rate*100:.1f}%",
-            "Profit Factor":       f"{pf:.2f}",
-            "Risk/Reward Ratio":   f"{rr:.2f}",
-            "Avg Win":             f"Rs {avg_win:,.2f}",
-            "Avg Loss":            f"Rs {avg_loss:,.2f}",
-            "Expectancy/Trade":    f"Rs {exp:,.2f}",
-            "Total Charges Paid":  f"Rs {charges.sum():,.2f}",
-        }
-        return self._metrics
-
-    def summary(self) -> str:
-        m = self._compute_metrics()
-        if "error" in m:
-            return f"Backtest completed — {m['error']}"
-        lines = ["", "=" * 55, f"  BACKTEST RESULTS — {m['Symbol']}", "=" * 55]
-        for k, v in m.items():
-            if k == "Symbol":
-                continue
-            lines.append(f"  {k:<26}: {v}")
-        lines.append("=" * 55)
-        return "\n".join(lines)
-
-    def trade_df(self) -> pd.DataFrame:
-        if not self.trade_log:
-            return pd.DataFrame()
-        return pd.DataFrame([t.to_dict() for t in self.trade_log])
-
-    def metrics_dict(self) -> Dict:
-        return self._compute_metrics()
-
-    # ------------------------------------------------------------------
-    # Data export helpers
-    # ------------------------------------------------------------------
-    def export_signals_csv(self, path: str) -> None:
-        """Write the signals DataFrame (ohlcv + indicators + signal column) to
-        a CSV file at the specified ``path``.
-
-        The DataFrame is exactly what the strategy returned in
-        ``BacktestEngine.run``; it already includes the original OHLCV columns
-        plus any indicator columns added by the strategy and the final
-        ``signal`` column.
-        """
-        if self.signals_df is None or self.signals_df.empty:
-            raise ValueError("No signal data available to export.")
-        self.signals_df.to_csv(path)
+# Output directory roots
+_HERE = Path(__file__).resolve().parent.parent
+OUTPUT_TRADE    = _HERE / "strategies" / "output" / "trade"
+OUTPUT_RAW      = _HERE / "strategies" / "output" / "raw_data"
+OUTPUT_CHART    = _HERE / "strategies" / "output" / "chart"
+for _d in (OUTPUT_TRADE, OUTPUT_RAW, OUTPUT_CHART):
+    _d.mkdir(parents=True, exist_ok=True)
 
 
 # =============================================================================
-# Enhanced Config (from engine_v2.py)
+# Enhanced Config
 # =============================================================================
 
 @dataclass
-class BacktestConfigV3(BacktestConfig):
-    """Extended BacktestConfig with advanced order types and output flags."""
+class BacktestConfigV2(BacktestConfig):
+    """
+    Extended BacktestConfig with advanced order types and output flags.
+
+    Inherits all fields from BacktestConfig and adds:
+      Order type settings:
+        default_order_type : OrderType  — which order type to use for entries
+        limit_offset_pct   : float      — For LIMIT orders: how far below/above
+                                          signal close to place limit (%)
+        stop_loss_pct      : float      — Fixed % stop-loss on all trades (0 = off)
+        stop_loss_atr_mult : float      — ATR-based stop (overrides stop_loss_pct)
+        use_trailing_stop  : bool       — Enable trailing stop on all trades
+        trailing_stop_pct  : float      — Trail distance in % (if trailing)
+        trailing_stop_amt  : float      — Trail distance in Rs (if trailing)
+
+      Output flags (all False by default):
+        save_trade_log     : bool       — Save trade log CSV
+        save_raw_data      : bool       — Save OHLCV + indicators + signals CSV
+        save_chart         : bool       — Save Streak-style PNG chart
+        generate_summary   : bool       — Generate multi-security summary sheet
+        run_label          : str        — Prefix for output filenames
+        max_candles        : int        — Max candles to plot in chart (default 2000)
+    """
     # ── Advanced Order Types ──────────────────────────────────────────────────
     default_order_type:  OrderType     = OrderType.MARKET
     limit_offset_pct:    float         = 0.2       # % below close for buy limit
@@ -371,11 +137,11 @@ class BacktestConfigV3(BacktestConfig):
 
 
 # =============================================================================
-# Extended Position (from engine_v2.py)
+# Extended Position (holds stop tracker)
 # =============================================================================
 
 @dataclass
-class PositionV3(Position):
+class PositionV2(Position):
     """Position extended with stop tracker and pending order type."""
     stop_tracker:     Optional[StopTracker] = None
     fixed_stop_price: Optional[float]       = None   # Hard stop-loss price
@@ -383,111 +149,19 @@ class PositionV3(Position):
 
 
 # =============================================================================
-# Output directory setup (from engine_v2.py)
+# Enhanced Backtest Engine
 # =============================================================================
 
-_HERE = Path(__file__).resolve().parent.parent
-OUTPUT_TRADE    = _HERE / "strategies" / "output" / "trade"
-OUTPUT_RAW      = _HERE / "strategies" / "output" / "raw_data"
-OUTPUT_CHART    = _HERE / "strategies" / "output" / "chart"
->>>>>>> 8d072798ed841b92b7056b98b3d612023cbaf223
-for _d in (OUTPUT_TRADE, OUTPUT_RAW, OUTPUT_CHART):
-    _d.mkdir(parents=True, exist_ok=True)
-
-
-<<<<<<< HEAD
-class BacktestEngine:
+class BacktestEngineV2:
     """
-    Main backtesting engine.
-
-    Parameters
-    ----------
-    config : BacktestConfig
-        All engine parameters.
-
-    Notes
-    -----
-    The engine is stateless between runs — the same instance can be used
-    for multiple ``run()`` calls with different data or strategies.
-    """
-
-    def __init__(self, config: BacktestConfig) -> None:
-        config.validate()
-        self.config = config
-
-    # ------------------------------------------------------------------
-    def run(
-        self,
-        df:       pd.DataFrame,
-        strategy,
-        symbol:   str = "SYMBOL",
-    ) -> BacktestResult:
-        """
-        Run a backtest on a single symbol.
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            OHLCV DataFrame.  Must contain ``open``, ``high``, ``low``,
-            ``close`` columns.  A timezone-aware DatetimeIndex (IST) is
-            recommended for intraday work.
-        strategy
-            Any instance whose ``generate_signals(df)`` method returns
-            the DataFrame with a ``signal`` column added.
-        symbol : str
-            Used for logging and output filenames.
-
-        Returns
-        -------
-        BacktestResult
-        """
-        self._preflight(df)
-        logger.info(
-            f"[BacktestEngine] {getattr(strategy, 'name', strategy.__class__.__name__)} "
-            f"on {symbol} ({len(df)} bars) | "
-            f"order={self.config.default_order_type.value}"
-        )
-
-        signals_df = strategy.generate_signals(df.copy())
-        if "signal" not in signals_df.columns:
-            raise ValueError(
-                f"strategy.generate_signals() must return a DataFrame with a "
-                f"'signal' column.  Got columns: {list(signals_df.columns)}"
-            )
-
-        trade_log, equity, drawdown = run_event_loop(signals_df, self.config, symbol)
-
-        result = BacktestResult(
-            config       = self.config,
-            symbol       = symbol,
-            trade_log    = trade_log,
-            equity_curve = equity,
-            drawdown     = drawdown,
-            signals_df   = signals_df,
-        )
-        self._handle_outputs(result, symbol)
-        return result
-
-    # ------------------------------------------------------------------
-=======
-# =============================================================================
-# Merged Backtest Engine
-# =============================================================================
-
-class BacktestEngineV3:
-    """
-    Merged backtesting engine combining features from engine.py and engine_v2.py.
-
-    Features:
-      • Basic backtesting with market orders (from engine.py)
+    Phase 4 backtesting engine with:
       • Advanced order types (LIMIT, STOP, STOP-LIMIT, TRAILING STOP)
       • Multi-security portfolio runs with aggregated outputs
       • Parameter optimizer (grid search + random search)
       • All output flags (trade log, raw data, chart, summary)
-      • Full Upstox commission modeling
     """
 
-    def __init__(self, config: BacktestConfigV3) -> None:
+    def __init__(self, config: BacktestConfigV2) -> None:
         self.config = config
 
     # =========================================================================
@@ -507,7 +181,7 @@ class BacktestEngineV3:
             BacktestResult
         """
         self._preflight_checks(df)
-        logger.info(f"[V3] Running {strategy.name} on {symbol} ({len(df)} bars) | "
+        logger.info(f"[V2] Running {strategy.name} on {symbol} ({len(df)} bars) | "
                     f"order={self.config.default_order_type.value}")
 
         signals_df = strategy.generate_signals(df)
@@ -518,7 +192,6 @@ class BacktestEngineV3:
         self._handle_outputs(result, symbol)
         return result
 
->>>>>>> 8d072798ed841b92b7056b98b3d612023cbaf223
     def run_portfolio(
         self,
         data_dict: Dict[str, pd.DataFrame],
@@ -528,138 +201,6 @@ class BacktestEngineV3:
         """
         Run the same strategy on a portfolio of symbols.
 
-<<<<<<< HEAD
-        Output files (trade log, raw data, summary) are written as
-        *separate per-symbol files*, not concatenated into one large
-        file.  This keeps memory usage O(1 symbol) rather than O(N
-        symbols) — critical for 50+ symbol runs.
-
-        Parameters
-        ----------
-        data_dict : dict
-            ``{symbol: ohlcv_df}`` mapping.
-        strategy
-            Strategy instance (same object used for all symbols).
-        label : str
-            Override ``config.run_label`` for this portfolio run.
-
-        Returns
-        -------
-        dict
-            ``{symbol: BacktestResult}``
-        """
-        run_label = label or self.config.run_label
-        logger.info(
-            f"[BacktestEngine] Portfolio run: {len(data_dict)} symbols | "
-            f"label={run_label}"
-        )
-        results: Dict[str, BacktestResult] = {}
-
-        for symbol, df in data_dict.items():
-            try:
-                self._preflight(df)
-                signals_df = strategy.generate_signals(df.copy())
-                if "signal" not in signals_df.columns:
-                    logger.warning(f"{symbol}: no 'signal' column — skipped")
-                    continue
-
-                trade_log, equity, drawdown = run_event_loop(
-                    signals_df, self.config, symbol
-                )
-                result = BacktestResult(
-                    config       = self.config,
-                    symbol       = symbol,
-                    trade_log    = trade_log,
-                    equity_curve = equity,
-                    drawdown     = drawdown,
-                    signals_df   = signals_df,
-                )
-                results[symbol] = result
-                self._handle_outputs(result, symbol, label=run_label)
-
-                net = sum(t.net_pnl for t in trade_log)
-                logger.info(
-                    f"  {symbol}: {len(trade_log)} trades | net=₹{net:+,.0f}"
-                )
-            except Exception as exc:
-                logger.error(f"  {symbol}: ERROR — {exc}", exc_info=True)
-
-        return results
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _preflight(df: pd.DataFrame) -> None:
-        """Validate the OHLCV DataFrame before running the loop."""
-        required = {"open", "high", "low", "close"}
-        missing  = required - set(df.columns)
-        if missing:
-            raise ValueError(f"DataFrame missing required columns: {missing}")
-        if len(df) < 2:
-            raise ValueError("DataFrame must have at least 2 rows.")
-        if df.index.duplicated().any():
-            raise ValueError(
-                "DataFrame index has duplicates. Run DataCleaner first."
-            )
-        if not pd.api.types.is_datetime64_any_dtype(df.index):
-            logger.warning(
-                "DataFrame index is not datetime — intraday squareoff and "
-                "time-based checks will be disabled."
-            )
-
-    def _handle_outputs(
-        self,
-        result: BacktestResult,
-        symbol: str,
-        label:  str = "",
-    ) -> None:
-        """Write output files based on config flags."""
-        cfg   = self.config
-        label = label or cfg.run_label
-
-        if cfg.save_trade_log and result.trade_log:
-            path = OUTPUT_TRADE / f"{label}_{symbol}_trade_log.csv"
-            result.trade_df().to_csv(path, index=False)
-            logger.info(f"Trade log → {path}")
-
-        if cfg.save_raw_data and result.signals_df is not None:
-            path = OUTPUT_RAW / f"{label}_{symbol}_raw.csv"
-            result.signals_df.to_csv(path)
-            logger.info(f"Raw data → {path}")
-
-        if cfg.save_chart:
-            try:
-                from backtester.report import generate_report
-                generate_report(
-                    result,
-                    symbol      = symbol,
-                    output_dir  = str(OUTPUT_CHART),
-                    filename    = f"{label}_{symbol}_chart.png",
-                    max_candles = cfg.max_candles,
-                )
-            except Exception as exc:
-                logger.warning(f"Chart generation failed for {symbol}: {exc}")
-
-        if cfg.generate_summary:
-            path = OUTPUT_TRADE / f"{label}_{symbol}_summary.json"
-            import json
-            m = result.metrics()
-            # Remove non-serialisable nested dicts for top-level summary
-            safe = {k: v for k, v in m.items()
-                    if not isinstance(v, (dict, list))}
-            with open(path, "w") as fh:
-                json.dump(safe, fh, indent=2, default=str)
-            logger.info(f"Summary → {path}")
-
-
-# ---------------------------------------------------------------------------
-# Convenience re-exports so users can ``from backtester.engine import *``
-# ---------------------------------------------------------------------------
-from backtester.models import BacktestConfig, BacktestResult, Trade, Position, OrderType  # noqa: F401, E402
-from backtester.optimizer import Optimizer, SearchMethod  # noqa: F401, E402
-=======
         All output files (trade log, raw data, chart, summary) are aggregated
         into SINGLE files across all symbols when output flags are True.
 
@@ -672,7 +213,7 @@ from backtester.optimizer import Optimizer, SearchMethod  # noqa: F401, E402
             {symbol: BacktestResult} mapping
         """
         run_label = label or self.config.run_label
-        logger.info(f"[V3] Portfolio run: {len(data_dict)} symbols | label={run_label}")
+        logger.info(f"[V2] Portfolio run: {len(data_dict)} symbols | label={run_label}")
 
         results:     Dict[str, BacktestResult] = {}
         all_trades:  List[dict]                = []
@@ -737,7 +278,7 @@ from backtester.optimizer import Optimizer, SearchMethod  # noqa: F401, E402
         return results
 
     # =========================================================================
-    # Parameter Optimizer
+    # Parameter Optimizer (Feature 3)
     # =========================================================================
 
     def optimize(
@@ -754,6 +295,18 @@ from backtester.optimizer import Optimizer, SearchMethod  # noqa: F401, E402
         """
         Fast parameter optimizer using vectorised pre-computation.
 
+        THEORY — WHY THIS IS FAST:
+          The expensive part of backtesting is signal generation (indicator math).
+          For grid search, we could run the full backtest for every parameter combo.
+          Instead, we generate signals once per combo but SKIP chart generation,
+          raw data writing, and per-bar output to minimize I/O overhead.
+          This makes it 3-10x faster than naive looping.
+
+        DESIGN CHOICES:
+          • 'grid' search: tests ALL combinations (exhaustive, slower for large grids)
+          • 'random' search: tests n_random random combos (faster, good enough for
+            large parameter spaces)
+
         Args:
             df:             OHLCV DataFrame
             strategy_class: Strategy class (not instance) to instantiate per trial
@@ -766,6 +319,12 @@ from backtester.optimizer import Optimizer, SearchMethod  # noqa: F401, E402
 
         Returns:
             DataFrame with columns = param names + metric values, sorted by metric
+
+        Example:
+            grid = {'fast_period': [5,9,13], 'slow_period': [21,34,50]}
+            top = engine.optimize(df, EMACrossover, grid, symbol='INFY',
+                                  metric='Sharpe Ratio')
+            print(top)
         """
         import itertools, random
 
@@ -851,14 +410,14 @@ from backtester.optimizer import Optimizer, SearchMethod  # noqa: F401, E402
         return result_df.head(top_n)
 
     # =========================================================================
-    # Event Loop (core engine - merged from both versions)
+    # Event Loop (core engine)
     # =========================================================================
 
     def _event_loop(self, df: pd.DataFrame, symbol: str) -> BacktestResult:
         cfg        = self.config
         commission = cfg.commission_model
         cash       = cfg.initial_capital
-        positions: List[PositionV3] = []
+        positions: List[PositionV2] = []
         trade_log: List[Trade]      = []
 
         equity_curve = pd.Series(np.nan, index=df.index, dtype=float)
@@ -893,7 +452,7 @@ from backtester.optimizer import Optimizer, SearchMethod  # noqa: F401, E402
                 equity_curve.iloc[i] = cash
                 continue
 
-            # ── 1. Update trailing stops and check triggers ───────────────────
+            # ── 1. Update trailing stops and check triggers ────────────────
             for pos in list(positions):
                 if pos.stop_tracker is not None:
                     pos.stop_tracker.update(hp, lp)
@@ -1006,16 +565,16 @@ from backtester.optimizer import Optimizer, SearchMethod  # noqa: F401, E402
         for pos in positions:
             res = self._close_pos(pos, prices[-1], times[-1], cash, commission,
                                   symbol, "End of Backtest", n - 1,
-                                  equity_curve.dropna().iloc[-1] if not equity_curve.dropna().empty else cash)
+                                  equity_curve.iloc[-1])
             cash = res["cash"]
             trade_log.append(res["trade"])
 
-        logger.info(f"[V3] {symbol}: {len(trade_log)} trades | "
+        logger.info(f"[V2] {symbol}: {len(trade_log)} trades | "
                     f"final={equity_curve.dropna().iloc[-1] if not equity_curve.dropna().empty else cash:,.2f}")
         return BacktestResult(cfg, trade_log, equity_curve, drawdown, df, symbol)
 
     # =========================================================================
-    # Entry Signal Handler
+    # Entry Signal Handler (dispatches to correct order type)
     # =========================================================================
 
     def _handle_entry_signal(
@@ -1081,7 +640,7 @@ from backtester.optimizer import Optimizer, SearchMethod  # noqa: F401, E402
 
         cash -= cost
 
-        new_pos = PositionV3(
+        new_pos = PositionV2(
             entry_time=ct, entry_price=exec_price, quantity=qty, direction=direction,
             entry_signal=entry_signal, entry_charges=chg.total,
             entry_bar_idx=bar_idx,
@@ -1103,14 +662,14 @@ from backtester.optimizer import Optimizer, SearchMethod  # noqa: F401, E402
 
         return cash, new_pos
 
-    def _get_exit_price(self, pos: PositionV3, market_price: float,
-                        cfg: BacktestConfigV3) -> float:
+    def _get_exit_price(self, pos: PositionV2, market_price: float,
+                        cfg: BacktestConfigV2) -> float:
         """Determine exit price based on order type for closes."""
         # For now, market exit always uses next open (already exec_price)
         return market_price
 
     # =========================================================================
-    # Output Handlers
+    # Output Handlers (Features 1, 2, 4, 5)
     # =========================================================================
 
     def _handle_outputs(self, result: BacktestResult, symbol: str) -> None:
@@ -1267,4 +826,3 @@ from backtester.optimizer import Optimizer, SearchMethod  # noqa: F401, E402
                 f"Only {len(df)} bars — reliable backtests need 100+ bars.",
                 UserWarning,
             )
->>>>>>> 8d072798ed841b92b7056b98b3d612023cbaf223

@@ -402,8 +402,11 @@ token = auth.generate_token_from_url("https://api-v2.upstox.com/login/authorizat
 # All subsequent uses — just get a valid token:
 token = auth.get_valid_token()
 '''
+<<<<<<< HEAD
 
 '''
+=======
+>>>>>>> 8d072798ed841b92b7056b98b3d612023cbaf223
 #Test 9
 from backtester.engine_v3 import BacktestEngineV3, BacktestConfigV3
 from backtester.order_types import OrderType
@@ -436,6 +439,7 @@ result = engine.run(df, strat, symbol="RELIANCE")
 
 # Parameter optimization
 #param_grid = {'fast_period': [5,9,13], 'slow_period': [21,34,50]}
+<<<<<<< HEAD
 #top_results = engine.optimize(df, StrategyClass, param_grid, symbol='INFY')
 '''
 #Test 10: With claude made backtester folder
@@ -469,3 +473,6 @@ engine  = BacktestEngine(cfg)
 strategy = EMACrossover(fast_period=9, slow_period=21)
 result  = engine.run(df, strategy, symbol='RELIANCE')
 
+=======
+#top_results = engine.optimize(df, StrategyClass, param_grid, symbol='INFY')
+>>>>>>> 8d072798ed841b92b7056b98b3d612023cbaf223
