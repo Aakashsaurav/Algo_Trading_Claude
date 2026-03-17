@@ -1,24 +1,72 @@
-*.log
-*.env
+# -------------------------------
+# Environment & Secrets
+# -------------------------------
 .env
-*/.env
-config.py
-*/config.py
+.env.*
+*.env
+*.json
+token.json
+
+# -------------------------------
+# Logs & Runtime Files
+# -------------------------------
+*.log
+
+# -------------------------------
+# Database Files
+# -------------------------------
 *.db
 *.sqlite3
+
+# -------------------------------
+# Python Cache & Build Files
+# -------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# -------------------------------
+# Virtual Environment
+# -------------------------------
+venv/
+.venv/
+env/
+.env
+
+# -------------------------------
+# OS & System Files
+# -------------------------------
 .DS_Store
+Thumbs.db
+
+# -------------------------------
+# Testing & Tooling
+# -------------------------------
 .pytest_cache/
-*/__pycache__/
-__pycache__/
-__pycache__/
-*/*.pyc
-*.pyc
-*.pyo
-*.pyd
-*/token.json
-*/.parquet
-*/*.parquet
-*/.csv
-*/*.csv
-*/.png
-*/.log
+.coverage
+
+# -------------------------------
+# Data Files (Ignore everywhere)
+# -------------------------------
+*.csv
+*.parquet
+*.png
+*.json
+*.docx
+
+# -------------------------------
+# Config Files (Sensitive)
+# -------------------------------
+config.py
+
+# -------------------------------
+# IDE / Editor
+# -------------------------------
+.vscode/
+.idea/
+
+# -------------------------------
+# Misc
+# -------------------------------
+*.bak
+*.tmp
