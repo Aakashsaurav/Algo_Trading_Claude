@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlgoDesk — Backtester</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <!-- Lightweight Charts (TradingView library) — candlestick + overlays -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    .bt-layout { display: grid; grid-template-columns: 320px 1fr; gap: 16px; }
+    .bt-config { display: flex; flex-direction: column; gap: 12px; }
+    .bt-results { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    #chart-container { width: 100%; height: 420px; background: var(--bg-3); border-radius: 6px; overflow:hidden; }
+    .chart-toolbar {
+      display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;
+    }
+    .chart-legend {
+      display:flex; gap:14px; font-size:11px; font-family:var(--mono); color:var(--muted);
+    }
+    .legend-item { display:flex; align-items:center; gap:5px; }
+    .legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    /* Equity / drawdown mini canvases */
+    .mini-charts { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    #equity-canvas, #dd-canvas { width:100% !important; height:90px; display:block; }
+    /* Optimizer section */
+    .opt-grid { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; align-items:end; }
+    .param-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:end; margin-bottom:8px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+      <span>AlgoDesk</span>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Modules</div>
+      <a class="nav-item" href="/strategy-builder">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <span>Strategy Builder</span>
+      </a>
+      <a class="nav-item active" href="/backtester">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        <span>Backtester</span>
+      </a>
+      <a class="nav-item" href="/screener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Screener</span>
+      </a>
+      <a class="nav-item" href="/live-bot">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        <span>Live Bot</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer"><span class="status-dot"></span><span>System Ready</span></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <span class="topbar-title">Backtester</span>
+      <span class="topbar-meta" id="topbar-meta">Configure → Run → Analyze</span>
+      <div class="topbar-spacer"></div>
+      <div class="spinner" id="top-spinner"></div>
+      <span class="badge badge-amber">Phase 3</span>
+    </header>
+
+    <main class="page-content">
+      <div class="bt-layout">
+
+        <!-- LEFT: Config panel -->
+        <div class="bt-config">
+          <div class="card">
+            <div class="card-title">Strategy & Data</div>
+            <div class="form-group">
+              <label>Strategy</label>
+              <select id="cfg-strategy" onchange="onStrategyChange()">
+                <option value="">Loading...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Symbol</label>
+              <input type="text" id="cfg-symbol" value="INFY" placeholder="INFY, RELIANCE…">
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Timeframe</label>
+                <select id="cfg-timeframe">
+                  <option value="daily">Daily</option>
+                  <option value="minute">1 Min</option>
+                  <option value="5m">5 Min</option>
+                  <option value="15m">15 Min</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Segment</label>
+                <select id="cfg-segment">
+                  <option value="EQUITY_DELIVERY">EQ Delivery</option>
+                  <option value="EQUITY_INTRADAY">EQ Intraday</option>
+                  <option value="FNO_FUTURES">FNO Futures</option>
+                  <option value="FNO_OPTIONS">FNO Options</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>From</label>
+                <input type="date" id="cfg-from" value="2020-01-01">
+              </div>
+              <div class="form-group">
+                <label>To</label>
+                <input type="date" id="cfg-to">
+              </div>
+            </div>
+          </div>
+
+          <!-- Strategy params (dynamic) -->
+          <div class="card" id="params-card" style="display:none;">
+            <div class="card-title">Strategy Parameters</div>
+            <div id="params-container"></div>
+          </div>
+
+          <!-- Capital & risk -->
+          <div class="card">
+            <div class="card-title">Capital & Risk</div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Capital (₹)</label>
+                <input type="number" id="cfg-capital" value="500000" step="50000">
+              </div>
+              <div class="form-group">
+                <label>Risk % / Trade</label>
+                <input type="number" id="cfg-risk" value="2" step="0.1">
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Stop Loss %</label>
+                <input type="number" id="cfg-sl" value="0" step="0.5">
+              </div>
+              <div class="form-group">
+                <label>Trailing Stop %</label>
+                <input type="number" id="cfg-trail" value="0" step="0.5">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Order Type</label>
+              <select id="cfg-order-type">
+                <option value="MARKET">Market</option>
+                <option value="LIMIT">Limit</option>
+                <option value="STOP">Stop</option>
+                <option value="STOP_LIMIT">Stop-Limit</option>
+                <option value="TRAILING_STOP">Trailing Stop</option>
+              </select>
+            </div>
+            <div class="checkbox-row" style="margin-top:8px;">
+              <input type="checkbox" id="cfg-shorting">
+              <label for="cfg-shorting">Allow Shorting</label>
+            </div>
+          </div>
+
+          <!-- Outputs -->
+          <div class="card">
+            <div class="card-title">Save Outputs</div>
+            <div class="form-group">
+              <label>Run Label</label>
+              <input type="text" id="cfg-label" value="bt_run" placeholder="prefix for output files">
+            </div>
+            <div class="checkbox-row" style="margin-bottom:8px;">
+              <input type="checkbox" id="cfg-save-chart" checked>
+              <label for="cfg-save-chart">Save chart PNG</label>
+            </div>
+            <div class="checkbox-row" style="margin-bottom:8px;">
+              <input type="checkbox" id="cfg-save-trades">
+              <label for="cfg-save-trades">Save trade log CSV</label>
+            </div>
+            <div class="checkbox-row">
+              <input type="checkbox" id="cfg-save-raw">
+              <label for="cfg-save-raw">Save raw data CSV</label>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <button class="btn btn-primary" id="run-btn" onclick="runBacktest()" style="width:100%;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Run Backtest
+          </button>
+
+          <!-- Optimizer toggle -->
+          <div class="card" id="optimizer-section">
+            <div class="card-title" style="cursor:pointer;" onclick="toggleOptimizer()">
+              ⚙ Parameter Optimizer
+              <span id="opt-toggle-label" style="font-weight:400;font-size:10px;color:var(--amber);float:right;">▼ expand</span>
+            </div>
+            <div id="optimizer-body" style="display:none;">
+              <div class="opt-grid">
+                <div class="form-group" style="margin:0;">
+                  <label>Method</label>
+                  <select id="opt-method">
+                    <option value="grid">Grid (all combos)</option>
+                    <option value="random">Random (fast)</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Target Metric</label>
+                  <select id="opt-metric">
+                    <option value="Sharpe Ratio">Sharpe Ratio</option>
+                    <option value="Total Return">Total Return</option>
+                    <option value="CAGR">CAGR</option>
+                    <option value="Profit Factor">Profit Factor</option>
+                    <option value="Max Drawdown">Max Drawdown</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>N (random)</label>
+                  <input type="number" id="opt-n-random" value="30">
+                </div>
+              </div>
+              <div class="section-heading" style="font-size:10px;margin:12px 0 8px;">Parameter Ranges</div>
+              <div id="opt-params"></div>
+              <button class="btn btn-ghost" onclick="addOptParam()" style="margin-bottom:10px; width:100%;">+ Add Parameter</button>
+              <button class="btn btn-primary" onclick="runOptimizer()" style="width:100%;">
+                Run Optimizer
+              </button>
+            </div>
+          </div>
+        </div><!-- /bt-config -->
+
+        <!-- RIGHT: Results -->
+        <div class="bt-results">
+
+          <!-- Error/info message -->
+          <div id="result-alert" style="display:none;"></div>
+
+          <!-- Candlestick + signals chart -->
+          <div class="card" id="chart-card" style="display:none;">
+            <div class="chart-toolbar">
+              <div class="card-title" style="margin:0;">Candlestick Chart</div>
+              <div class="topbar-spacer"></div>
+              <div class="chart-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#26a65b;"></div> Buy</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#e53e3e;"></div> Sell / Exit</div>
+              </div>
+              <a id="chart-download" href="#" download class="btn btn-ghost" style="padding:5px 10px;font-size:11px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                PNG
+              </a>
+            </div>
+            <div id="chart-container"></div>
+          </div>
+
+          <!-- Metrics grid -->
+          <div class="card" id="metrics-card" style="display:none;">
+            <div class="card-title">Performance Metrics</div>
+            <div class="metric-grid" id="metrics-grid"></div>
+          </div>
+
+          <!-- Equity + Drawdown mini charts -->
+          <div class="mini-charts" id="mini-charts" style="display:none;">
+            <div class="card">
+              <div class="canvas-label">Equity Curve (₹)</div>
+              <canvas id="equity-canvas"></canvas>
+            </div>
+            <div class="card">
+              <div class="canvas-label">Drawdown (%)</div>
+              <canvas id="dd-canvas"></canvas>
+            </div>
+          </div>
+
+          <!-- Trade log table -->
+          <div class="card" id="trades-card" style="display:none;">
+            <div class="card-title">Trade Log</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th><th>Dir</th><th>Entry Date</th><th>Entry ₹</th>
+                    <th>Exit Date</th><th>Exit ₹</th><th>Qty</th>
+                    <th>Gross P&L</th><th>Charges</th><th>Net P&L</th>
+                    <th>P&L %</th><th>Duration</th><th>Exit Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="trades-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Optimizer results table -->
+          <div class="card" id="opt-results-card" style="display:none;">
+            <div class="card-title">Optimizer Results</div>
+            <div class="table-wrap">
+              <table id="opt-results-table">
+                <thead id="opt-results-thead"></thead>
+                <tbody id="opt-results-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div><!-- /bt-results -->
+      </div><!-- /bt-layout -->
+    </main>
+  </div>
+</div>
+
+<script src="/static/js/chart.js"></script>
+<script src="/static/js/backtest_results.js"></script>
+</body>
+</html>

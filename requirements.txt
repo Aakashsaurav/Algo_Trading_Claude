@@ -1,0 +1,47 @@
+# ============================================================
+# requirements.txt — Algo Trading System
+# Install with: pip install -r requirements.txt
+# ============================================================
+
+# --- Core ---
+python-dotenv          # Load .env variables
+requests               # HTTP client for API calls
+
+# --- Data & Analysis ---
+pandas                 # DataFrames — the backbone of all data work
+numpy                  # Numerical operations
+pyarrow                # Parquet read/write (fast columnar storage)
+
+# --- Web Framework (Backend API) ---
+fastapi                # API server for the dashboard
+uvicorn                # ASGI server to run FastAPI
+flask 
+pyopenssl
+python-multipart 
+aiofiles
+
+# --- Scheduling ---
+APScheduler            # Run jobs at market open/close, EOD updates
+
+# --- Broker SDK ---
+upstox-python-sdk      # Official Upstox Python SDK
+
+# --- Database ---
+sqlalchemy             # ORM for SQLite / PostgreSQL
+
+# --- Testing ---
+pytest                 # Test framework
+pytest-mock            # Mock objects for testing API calls
+
+# --- Notifications (set up in Phase 7) ---
+python-telegram-bot    # Telegram alerts
+
+# --- Dashboard Charts (used in templates) ---
+matplotlib
+# Note: Plotly and Lightweight Charts are loaded via CDN in HTML templates
+# No Python package needed for frontend charting
+
+#Indicator libraries
+#pandas-ta
+#ta
+TA-Lib

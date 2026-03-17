@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlgoDesk — Screener</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <style>
+    .sc-layout { display:grid; grid-template-columns:300px 1fr; gap:16px; }
+    .sc-config  { display:flex; flex-direction:column; gap:12px; }
+    .sc-results { display:flex; flex-direction:column; gap:12px; min-width:0; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>AlgoDesk</span>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Modules</div>
+      <a class="nav-item" href="/strategy-builder"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>Strategy Builder</span></a>
+      <a class="nav-item" href="/backtester"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg><span>Backtester</span></a>
+      <a class="nav-item active" href="/screener"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>Screener</span></a>
+      <a class="nav-item" href="/live-bot"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg><span>Live Bot</span></a>
+    </nav>
+    <div class="sidebar-footer"><span class="status-dot"></span><span>System Ready</span></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <span class="topbar-title">Screener</span>
+      <span class="topbar-meta">Scan Nifty 500 / F&O universe for live signals</span>
+      <div class="topbar-spacer"></div>
+      <div class="spinner" id="top-spinner"></div>
+      <span class="badge badge-blue">Phase 4</span>
+    </header>
+
+    <main class="page-content">
+      <div class="sc-layout">
+
+        <!-- LEFT: config -->
+        <div class="sc-config">
+          <div class="card">
+            <div class="card-title">Strategy</div>
+            <div class="form-group">
+              <label>Strategy</label>
+              <select id="sc-strategy" onchange="onScStrategyChange()">
+                <option value="">Loading...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Signal Type</label>
+              <select id="sc-signal-type">
+                <option value="1">Buy signals only (+1)</option>
+                <option value="-1">Sell signals only (-1)</option>
+                <option value="0">All signals</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Timeframe</label>
+              <select id="sc-timeframe">
+                <option value="daily">Daily</option>
+                <option value="minute">1 Min</option>
+                <option value="5m">5 Min</option>
+                <option value="15m">15 Min</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Data From</label>
+              <input type="date" id="sc-from" value="2022-01-01">
+            </div>
+          </div>
+
+          <!-- Strategy params (dynamic) -->
+          <div class="card" id="sc-params-card" style="display:none;">
+            <div class="card-title">Strategy Params</div>
+            <div id="sc-params-container"></div>
+          </div>
+
+          <!-- Filters -->
+          <div class="card">
+            <div class="card-title">Filters</div>
+            <div class="form-group">
+              <label>Min Volume (avg)</label>
+              <input type="number" id="sc-min-vol" value="200000" step="50000">
+            </div>
+            <div class="form-group">
+              <label>Min Price (₹)</label>
+              <input type="number" id="sc-min-price" value="50" step="10">
+            </div>
+            <div class="form-group">
+              <label>Max Results</label>
+              <input type="number" id="sc-max-results" value="30" min="1" max="200">
+            </div>
+            <div class="form-group">
+              <label>Rank By Column</label>
+              <input type="text" id="sc-rank-by" value="close" placeholder="close, volume, rsi…">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="runScreener()" style="width:100%;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Run Scan
+          </button>
+        </div><!-- /sc-config -->
+
+        <!-- RIGHT: results -->
+        <div class="sc-results">
+          <!-- Alert -->
+          <div id="sc-alert" style="display:none;"></div>
+
+          <!-- Summary bar -->
+          <div id="sc-summary" style="display:none;" class="card">
+            <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+              <div><span class="topbar-meta">Scanned: </span><span id="sc-count-scanned" style="font-family:var(--mono);color:var(--amber);">—</span></div>
+              <div><span class="topbar-meta">Hits: </span><span id="sc-count-hits" style="font-family:var(--mono);color:var(--green);">—</span></div>
+              <div><span class="topbar-meta">Strategy: </span><span id="sc-strategy-label" style="font-family:var(--mono);">—</span></div>
+              <div class="topbar-spacer"></div>
+              <a id="sc-download" href="#" class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" download>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                CSV
+              </a>
+            </div>
+          </div>
+
+          <!-- Results table -->
+          <div class="card" id="sc-table-card" style="display:none;">
+            <div class="card-title">Scan Results</div>
+            <div class="table-wrap">
+              <table>
+                <thead id="sc-thead"></thead>
+                <tbody id="sc-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div class="empty" id="sc-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <div>Configure strategy and filters, then click Run Scan</div>
+          </div>
+
+        </div><!-- /sc-results -->
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/static/js/screener_table.js"></script>
+</body>
+</html>

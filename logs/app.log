@@ -1,0 +1,174 @@
+2026-03-15 19:35:27 | INFO     | broker.upstox.instrument_manager | Downloading instrument list from: https://assets.upstox.com/market-quote/instruments/exchange/complete.json.gz
+2026-03-15 19:35:30 | INFO     | broker.upstox.instrument_manager | Instrument list downloaded and saved to: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/complete_instru_list.json (174,086 instruments)
+2026-03-15 19:35:30 | INFO     | broker.upstox.instrument_manager | Found EQUITY: RELIANCE -> NSE_EQ|INE002A01018
+2026-03-15 19:35:30 | INFO     | broker.upstox.data_manager | get_ohlcv: RELIANCE | days/1 | 2015-01-03 → 2026-03-15 | key=NSE_EQ|INE002A01018
+2026-03-15 19:35:30 | INFO     | broker.upstox.data_manager | No cache for RELIANCE (days). Downloading full history from 2000-01-03.
+2026-03-15 19:35:30 | INFO     | broker.upstox.data_manager | Downloading 3 chunk(s) for RELIANCE (days, 2000-01-03 → 2026-03-15).
+2026-03-15 19:35:30 | INFO     | broker.upstox.data_manager |   Chunk 1/3: 2000-01-03 → 2010-01-02
+2026-03-15 19:35:32 | INFO     | broker.upstox.data_manager |   Chunk 2/3: 2010-01-03 → 2020-01-02
+2026-03-15 19:35:34 | INFO     | broker.upstox.data_manager |   Chunk 3/3: 2020-01-03 → 2026-03-15
+2026-03-15 19:35:34 | INFO     | broker.upstox.data_manager | Returning 2763 1days candles for RELIANCE
+2026-03-15 19:50:26 | INFO     | broker.upstox.instrument_manager | Loading instrument data from local cache: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/complete_instru_list.json
+2026-03-15 19:50:26 | INFO     | broker.upstox.instrument_manager | Found EQUITY: RELIANCE -> NSE_EQ|INE002A01018
+2026-03-15 19:50:26 | INFO     | broker.upstox.data_manager | get_ohlcv: RELIANCE | days/1 | 2015-01-03 → 2026-03-15 | key=NSE_EQ|INE002A01018
+2026-03-15 19:50:26 | INFO     | broker.upstox.data_manager | Cache is current for RELIANCE (days). Latest cached: 2026-03-13.
+2026-03-15 19:50:26 | INFO     | broker.upstox.data_manager | Returning 2763 1days candles for RELIANCE
+2026-03-15 19:54:18 | INFO     | broker.upstox.instrument_manager | Loading instrument data from local cache: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/complete_instru_list.json
+2026-03-15 19:54:19 | INFO     | broker.upstox.instrument_manager | Found EQUITY: RELIANCE -> NSE_EQ|INE002A01018
+2026-03-15 19:54:19 | INFO     | broker.upstox.data_manager | get_ohlcv: RELIANCE | days/1 | 2015-01-03 → 2026-03-15 | key=NSE_EQ|INE002A01018
+2026-03-15 19:54:19 | INFO     | broker.upstox.data_manager | Cache is current for RELIANCE (days). Latest cached: 2026-03-13.
+2026-03-15 19:54:19 | INFO     | broker.upstox.data_manager | Returning 2763 1days candles for RELIANCE
+2026-03-15 19:54:22 | INFO     | backtester.engine         | [BacktestEngine] EMA Crossover (9/21) on INFY (2763 bars) | order=MARKET
+2026-03-15 19:54:22 | WARNING  | backtester.event_loop     | [INFY] Max drawdown limit breached at bar 65. Halting.
+2026-03-15 19:54:22 | INFO     | backtester.event_loop     | [INFY] 1 trades | final equity=₹502,870.84
+2026-03-15 20:03:19 | INFO     | broker.upstox.instrument_manager | Loading instrument data from local cache: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/complete_instru_list.json
+2026-03-15 20:03:19 | INFO     | broker.upstox.instrument_manager | Found EQUITY: RELIANCE -> NSE_EQ|INE002A01018
+2026-03-15 20:03:19 | INFO     | broker.upstox.data_manager | get_ohlcv: RELIANCE | days/1 | 2015-01-03 → 2026-03-15 | key=NSE_EQ|INE002A01018
+2026-03-15 20:03:19 | INFO     | broker.upstox.data_manager | Cache is current for RELIANCE (days). Latest cached: 2026-03-13.
+2026-03-15 20:03:19 | INFO     | broker.upstox.data_manager | Returning 2763 1days candles for RELIANCE
+2026-03-15 20:04:29 | INFO     | broker.upstox.instrument_manager | Loading instrument data from local cache: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/complete_instru_list.json
+2026-03-15 20:04:30 | INFO     | broker.upstox.instrument_manager | Found EQUITY: RELIANCE -> NSE_EQ|INE002A01018
+2026-03-15 20:04:30 | INFO     | broker.upstox.data_manager | get_ohlcv: RELIANCE | days/1 | 2015-01-03 → 2026-03-15 | key=NSE_EQ|INE002A01018
+2026-03-15 20:04:30 | INFO     | broker.upstox.data_manager | Cache is current for RELIANCE (days). Latest cached: 2026-03-13.
+2026-03-15 20:04:30 | INFO     | broker.upstox.data_manager | Returning 2763 1days candles for RELIANCE
+2026-03-15 20:04:42 | INFO     | broker.upstox.instrument_manager | Loading instrument data from local cache: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/complete_instru_list.json
+2026-03-15 20:04:43 | INFO     | broker.upstox.instrument_manager | Found EQUITY: RELIANCE -> NSE_EQ|INE002A01018
+2026-03-15 20:04:43 | INFO     | broker.upstox.data_manager | get_ohlcv: RELIANCE | days/1 | 2015-01-03 → 2026-03-15 | key=NSE_EQ|INE002A01018
+2026-03-15 20:04:43 | INFO     | broker.upstox.data_manager | Cache is current for RELIANCE (days). Latest cached: 2026-03-13.
+2026-03-15 20:04:43 | INFO     | broker.upstox.data_manager | Returning 2763 1days candles for RELIANCE
+2026-03-15 20:04:43 | INFO     | backtester.engine         | [BacktestEngine] EMA Crossover (9/21) on RELIANCE (2763 bars) | order=MARKET
+2026-03-15 20:04:43 | WARNING  | backtester.event_loop     | [RELIANCE] Max drawdown limit breached at bar 265. Halting.
+2026-03-15 20:04:43 | INFO     | backtester.event_loop     | [RELIANCE] 1 trades | final equity=₹495,028.47
+2026-03-15 20:04:43 | INFO     | backtester.engine         | Trade log → /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/strategies/output/trade/ema_cross_reliance_RELIANCE_trade_log.csv
+2026-03-15 20:04:43 | INFO     | backtester.engine         | Raw data → /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/strategies/output/raw_data/ema_cross_reliance_RELIANCE_raw.csv
+2026-03-15 20:04:43 | WARNING  | backtester.engine         | Chart generation failed for RELIANCE: '>' not supported between instances of 'int' and 'NoneType'
+2026-03-15 20:04:43 | INFO     | backtester.engine         | Summary → /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/strategies/output/trade/ema_cross_reliance_RELIANCE_summary.json
+2026-03-15 20:06:23 | INFO     | broker.upstox.instrument_manager | Loading instrument data from local cache: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/complete_instru_list.json
+2026-03-15 20:06:24 | INFO     | broker.upstox.instrument_manager | Found EQUITY: RELIANCE -> NSE_EQ|INE002A01018
+2026-03-15 20:06:24 | INFO     | broker.upstox.data_manager | get_ohlcv: RELIANCE | days/1 | 2015-01-03 → 2026-03-15 | key=NSE_EQ|INE002A01018
+2026-03-15 20:06:24 | INFO     | broker.upstox.data_manager | Cache is current for RELIANCE (days). Latest cached: 2026-03-13.
+2026-03-15 20:06:24 | INFO     | broker.upstox.data_manager | Returning 2763 1days candles for RELIANCE
+2026-03-15 20:06:24 | INFO     | backtester.engine         | [BacktestEngine] EMA Crossover (9/21) on RELIANCE (2763 bars) | order=MARKET
+2026-03-15 20:06:24 | WARNING  | backtester.event_loop     | [RELIANCE] Max drawdown limit breached at bar 265. Halting.
+2026-03-15 20:06:24 | INFO     | backtester.event_loop     | [RELIANCE] 1 trades | final equity=₹495,028.47
+2026-03-15 20:06:24 | INFO     | backtester.engine         | Trade log → /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/strategies/output/trade/ema_cross_reliance_RELIANCE_trade_log.csv
+2026-03-15 20:06:24 | INFO     | backtester.engine         | Raw data → /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/strategies/output/raw_data/ema_cross_reliance_RELIANCE_raw.csv
+2026-03-15 20:06:26 | INFO     | backtester.report         | Report saved: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/strategies/output/chart/ema_cross_reliance_RELIANCE_chart.png
+2026-03-15 20:06:26 | INFO     | backtester.engine         | Summary → /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/strategies/output/trade/ema_cross_reliance_RELIANCE_summary.json
+2026-03-15 20:10:31 | INFO     | broker.upstox.instrument_manager | Loading instrument data from local cache: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/complete_instru_list.json
+2026-03-15 20:10:32 | INFO     | broker.upstox.instrument_manager | Found EQUITY: RELIANCE -> NSE_EQ|INE002A01018
+2026-03-15 20:10:32 | INFO     | broker.upstox.data_manager | get_ohlcv: RELIANCE | days/1 | 2015-01-03 → 2026-03-15 | key=NSE_EQ|INE002A01018
+2026-03-15 20:10:32 | INFO     | broker.upstox.data_manager | Cache is current for RELIANCE (days). Latest cached: 2026-03-13.
+2026-03-15 20:10:32 | INFO     | broker.upstox.data_manager | Returning 2763 1days candles for RELIANCE
+2026-03-15 20:10:32 | INFO     | backtester.engine         | [BacktestEngine] EMA Crossover (9/21) on RELIANCE (2763 bars) | order=MARKET
+2026-03-15 20:10:32 | WARNING  | backtester.event_loop     | [RELIANCE] Max drawdown limit breached at bar 1495. Halting.
+2026-03-15 20:10:32 | INFO     | backtester.event_loop     | [RELIANCE] 1 trades | final equity=₹479,007.39
+2026-03-15 20:10:32 | INFO     | backtester.engine         | Trade log → /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/strategies/output/trade/ema_cross_reliance_RELIANCE_trade_log.csv
+2026-03-15 20:10:32 | INFO     | backtester.engine         | Raw data → /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/strategies/output/raw_data/ema_cross_reliance_RELIANCE_raw.csv
+2026-03-15 20:10:34 | INFO     | backtester.report         | Report saved: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/strategies/output/chart/ema_cross_reliance_RELIANCE_chart.png
+2026-03-15 20:10:34 | INFO     | backtester.engine         | Summary → /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/strategies/output/trade/ema_cross_reliance_RELIANCE_summary.json
+2026-03-16 13:41:24 | INFO     | orb_runner                | Loading NIFTY 50 1-min data: 2021-03-17 → 2026-03-16
+2026-03-16 13:41:24 | INFO     | broker.upstox.instrument_manager | File last modified at 2026-03-15 19:35:30.876841+05:30, which is before today's 7 AM IST. Re-downloading...
+2026-03-16 13:41:24 | INFO     | broker.upstox.instrument_manager | Downloading instrument list from: https://assets.upstox.com/market-quote/instruments/exchange/complete.json.gz
+2026-03-16 13:41:29 | INFO     | broker.upstox.instrument_manager | Instrument list downloaded and saved to: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/complete_instru_list.json (174,086 instruments)
+2026-03-16 13:41:29 | ERROR    | orb_runner                | Backtest failed: No INDEX found for NIFTY 50 on NSE. Searched segments: ['NSE_INDEX', 'BSE_INDEX']. Additional filters: expiry=None, strike=None, option_type=None
+Traceback (most recent call last):
+  File "/Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/Claude_changes/tests/run_orb_backtest.py", line 734, in <module>
+    main()
+  File "/Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/Claude_changes/tests/run_orb_backtest.py", line 652, in main
+    df = load_nifty_data(FROM_DATE, TO_DATE)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/Claude_changes/tests/run_orb_backtest.py", line 135, in load_nifty_data
+    df = get_ohlcv(
+         ^^^^^^^^^^
+  File "/Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/data_manager.py", line 192, in get_ohlcv
+    instrument_key = get_instrument_key(
+                     ^^^^^^^^^^^^^^^^^^^
+  File "/Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/instrument_manager.py", line 389, in get_instrument_key
+    raise ValueError(
+ValueError: No INDEX found for NIFTY 50 on NSE. Searched segments: ['NSE_INDEX', 'BSE_INDEX']. Additional filters: expiry=None, strike=None, option_type=None
+2026-03-16 13:42:00 | INFO     | orb_runner                | Loading NIFTY 50 1-min data: 2021-03-17 → 2026-03-16
+2026-03-16 13:42:00 | INFO     | broker.upstox.instrument_manager | Loading instrument data from local cache: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/complete_instru_list.json
+2026-03-16 13:42:01 | ERROR    | orb_runner                | Backtest failed: No INDEX found for NIFTY 50 on NSE. Searched segments: ['NSE_INDEX', 'BSE_INDEX']. Additional filters: expiry=None, strike=None, option_type=None
+Traceback (most recent call last):
+  File "/Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/Claude_changes/tests/run_orb_backtest.py", line 734, in <module>
+    main()
+  File "/Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/Claude_changes/tests/run_orb_backtest.py", line 652, in main
+    df = load_nifty_data(FROM_DATE, TO_DATE)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/Claude_changes/tests/run_orb_backtest.py", line 135, in load_nifty_data
+    df = get_ohlcv(
+         ^^^^^^^^^^
+  File "/Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/data_manager.py", line 192, in get_ohlcv
+    instrument_key = get_instrument_key(
+                     ^^^^^^^^^^^^^^^^^^^
+  File "/Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/instrument_manager.py", line 389, in get_instrument_key
+    raise ValueError(
+ValueError: No INDEX found for NIFTY 50 on NSE. Searched segments: ['NSE_INDEX', 'BSE_INDEX']. Additional filters: expiry=None, strike=None, option_type=None
+2026-03-16 17:31:53 | INFO     | orb_runner                | Loading NIFTY 50 1-min data: 2021-03-17 → 2026-03-16
+2026-03-16 17:31:53 | INFO     | broker.upstox.instrument_manager | Loading instrument data from local cache: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/broker/upstox/complete_instru_list.json
+2026-03-16 17:31:53 | INFO     | broker.upstox.instrument_manager | Found INDEX: NIFTY -> NSE_INDEX|Nifty 50
+2026-03-16 17:31:53 | INFO     | broker.upstox.data_manager | get_ohlcv: NIFTY | minutes/1 | 2021-03-17 → 2026-03-16 | key=NSE_INDEX|Nifty 50
+2026-03-16 17:31:53 | INFO     | broker.upstox.data_manager | No cache for NIFTY (minutes). Downloading full history from 2022-01-03.
+2026-03-16 17:31:53 | INFO     | broker.upstox.data_manager | Downloading 51 chunk(s) for NIFTY (minutes, 2022-01-03 → 2026-03-16).
+2026-03-16 17:31:53 | INFO     | broker.upstox.data_manager |   Chunk 1/51: 2022-01-03 → 2022-01-31
+2026-03-16 17:31:54 | INFO     | broker.upstox.data_manager |   Chunk 2/51: 2022-02-01 → 2022-02-28
+2026-03-16 17:31:55 | INFO     | broker.upstox.data_manager |   Chunk 3/51: 2022-03-01 → 2022-03-31
+2026-03-16 17:31:56 | INFO     | broker.upstox.data_manager |   Chunk 4/51: 2022-04-01 → 2022-04-30
+2026-03-16 17:31:57 | INFO     | broker.upstox.data_manager |   Chunk 5/51: 2022-05-01 → 2022-05-31
+2026-03-16 17:31:57 | INFO     | broker.upstox.data_manager |   Chunk 6/51: 2022-06-01 → 2022-06-30
+2026-03-16 17:31:58 | INFO     | broker.upstox.data_manager |   Chunk 7/51: 2022-07-01 → 2022-07-31
+2026-03-16 17:31:59 | INFO     | broker.upstox.data_manager |   Chunk 8/51: 2022-08-01 → 2022-08-31
+2026-03-16 17:32:00 | INFO     | broker.upstox.data_manager |   Chunk 9/51: 2022-09-01 → 2022-09-30
+2026-03-16 17:32:00 | INFO     | broker.upstox.data_manager |   Chunk 10/51: 2022-10-01 → 2022-10-31
+2026-03-16 17:32:01 | INFO     | broker.upstox.data_manager |   Chunk 11/51: 2022-11-01 → 2022-11-30
+2026-03-16 17:32:02 | INFO     | broker.upstox.data_manager |   Chunk 12/51: 2022-12-01 → 2022-12-31
+2026-03-16 17:32:03 | INFO     | broker.upstox.data_manager |   Chunk 13/51: 2023-01-01 → 2023-01-31
+2026-03-16 17:32:03 | INFO     | broker.upstox.data_manager |   Chunk 14/51: 2023-02-01 → 2023-02-28
+2026-03-16 17:32:04 | INFO     | broker.upstox.data_manager |   Chunk 15/51: 2023-03-01 → 2023-03-31
+2026-03-16 17:32:05 | INFO     | broker.upstox.data_manager |   Chunk 16/51: 2023-04-01 → 2023-04-30
+2026-03-16 17:32:05 | INFO     | broker.upstox.data_manager |   Chunk 17/51: 2023-05-01 → 2023-05-31
+2026-03-16 17:32:06 | INFO     | broker.upstox.data_manager |   Chunk 18/51: 2023-06-01 → 2023-06-30
+2026-03-16 17:32:07 | INFO     | broker.upstox.data_manager |   Chunk 19/51: 2023-07-01 → 2023-07-31
+2026-03-16 17:32:08 | INFO     | broker.upstox.data_manager |   Chunk 20/51: 2023-08-01 → 2023-08-31
+2026-03-16 17:32:09 | INFO     | broker.upstox.data_manager |   Chunk 21/51: 2023-09-01 → 2023-09-30
+2026-03-16 17:32:10 | INFO     | broker.upstox.data_manager |   Chunk 22/51: 2023-10-01 → 2023-10-31
+2026-03-16 17:32:10 | INFO     | broker.upstox.data_manager |   Chunk 23/51: 2023-11-01 → 2023-11-30
+2026-03-16 17:32:11 | INFO     | broker.upstox.data_manager |   Chunk 24/51: 2023-12-01 → 2023-12-31
+2026-03-16 17:32:12 | INFO     | broker.upstox.data_manager |   Chunk 25/51: 2024-01-01 → 2024-01-31
+2026-03-16 17:32:13 | INFO     | broker.upstox.data_manager |   Chunk 26/51: 2024-02-01 → 2024-02-29
+2026-03-16 17:32:13 | INFO     | broker.upstox.data_manager |   Chunk 27/51: 2024-03-01 → 2024-03-31
+2026-03-16 17:32:14 | INFO     | broker.upstox.data_manager |   Chunk 28/51: 2024-04-01 → 2024-04-30
+2026-03-16 17:32:15 | INFO     | broker.upstox.data_manager |   Chunk 29/51: 2024-05-01 → 2024-05-31
+2026-03-16 17:32:15 | INFO     | broker.upstox.data_manager |   Chunk 30/51: 2024-06-01 → 2024-06-30
+2026-03-16 17:32:16 | INFO     | broker.upstox.data_manager |   Chunk 31/51: 2024-07-01 → 2024-07-31
+2026-03-16 17:32:17 | INFO     | broker.upstox.data_manager |   Chunk 32/51: 2024-08-01 → 2024-08-31
+2026-03-16 17:32:18 | INFO     | broker.upstox.data_manager |   Chunk 33/51: 2024-09-01 → 2024-09-30
+2026-03-16 17:32:19 | INFO     | broker.upstox.data_manager |   Chunk 34/51: 2024-10-01 → 2024-10-31
+2026-03-16 17:32:19 | INFO     | broker.upstox.data_manager |   Chunk 35/51: 2024-11-01 → 2024-11-30
+2026-03-16 17:32:20 | INFO     | broker.upstox.data_manager |   Chunk 36/51: 2024-12-01 → 2024-12-31
+2026-03-16 17:32:21 | INFO     | broker.upstox.data_manager |   Chunk 37/51: 2025-01-01 → 2025-01-31
+2026-03-16 17:32:21 | INFO     | broker.upstox.data_manager |   Chunk 38/51: 2025-02-01 → 2025-02-28
+2026-03-16 17:32:22 | INFO     | broker.upstox.data_manager |   Chunk 39/51: 2025-03-01 → 2025-03-31
+2026-03-16 17:32:23 | INFO     | broker.upstox.data_manager |   Chunk 40/51: 2025-04-01 → 2025-04-30
+2026-03-16 17:32:23 | INFO     | broker.upstox.data_manager |   Chunk 41/51: 2025-05-01 → 2025-05-31
+2026-03-16 17:32:24 | INFO     | broker.upstox.data_manager |   Chunk 42/51: 2025-06-01 → 2025-06-30
+2026-03-16 17:32:24 | INFO     | broker.upstox.data_manager |   Chunk 43/51: 2025-07-01 → 2025-07-31
+2026-03-16 17:32:25 | INFO     | broker.upstox.data_manager |   Chunk 44/51: 2025-08-01 → 2025-08-31
+2026-03-16 17:32:26 | INFO     | broker.upstox.data_manager |   Chunk 45/51: 2025-09-01 → 2025-09-30
+2026-03-16 17:32:26 | INFO     | broker.upstox.data_manager |   Chunk 46/51: 2025-10-01 → 2025-10-31
+2026-03-16 17:32:27 | INFO     | broker.upstox.data_manager |   Chunk 47/51: 2025-11-01 → 2025-11-30
+2026-03-16 17:32:28 | INFO     | broker.upstox.data_manager |   Chunk 48/51: 2025-12-01 → 2025-12-31
+2026-03-16 17:32:28 | INFO     | broker.upstox.data_manager |   Chunk 49/51: 2026-01-01 → 2026-01-31
+2026-03-16 17:32:29 | INFO     | broker.upstox.data_manager |   Chunk 50/51: 2026-02-01 → 2026-02-28
+2026-03-16 17:32:30 | INFO     | broker.upstox.data_manager |   Chunk 51/51: 2026-03-01 → 2026-03-16
+2026-03-16 17:32:31 | INFO     | broker.upstox.data_manager | Returning 388809 1minutes candles for NIFTY
+2026-03-16 17:32:31 | INFO     | orb_runner                | Data ready: 388,809 bars | 1039 trading days | 2021-03-17 → 2026-03-16
+2026-03-16 17:32:39 | INFO     | strategies.day_strategy.orb_nifty | ORBIndicators: 1039 days processed, 1038 valid OR days
+2026-03-16 17:32:47 | INFO     | strategies.day_strategy.orb_nifty | ORBNiftyStrategy: 388,809 bars | 1039 days | LONG signals=0 | SHORT signals=0 | vwap_filter=True | OR window=15min
+2026-03-16 17:32:47 | INFO     | orb_runner                | [ORB] Event loop start: 388,809 bars | NIFTY 50
+2026-03-16 17:32:48 | INFO     | orb_runner                | [ORB] Loop complete: 0 trades | Final equity ₹500,000.00 | Return 0.00%
+2026-03-16 17:32:51 | INFO     | orb_runner                | Signal CSV saved: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/Claude_changes/tests/strategies/output/raw_data/orb_nifty50_2021_to_2026_NIFTY 50_signals.csv
+2026-03-16 17:32:51 | INFO     | orb_runner                | Summary JSON saved: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/Claude_changes/tests/strategies/output/trade/orb_nifty50_2021_to_2026_NIFTY 50_summary.json
+2026-03-16 17:32:52 | INFO     | backtester.report         | Report saved: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/Claude_changes/tests/strategies/output/chart/orb_nifty50_2021_to_2026_NIFTY 50_chart.png
+2026-03-16 17:32:52 | INFO     | orb_runner                | Chart saved: /Users/aakashsaurav/Desktop/Python_Projects/Python/Algo_Trading_Claude-R1/Claude_changes/tests/strategies/output/chart/orb_nifty50_2021_to_2026_NIFTY 50_chart.png

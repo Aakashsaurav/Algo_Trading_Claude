@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlgoDesk — Trading System</title>
+  <!-- IBM Plex fonts from Google Fonts CDN (no local install required) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar Navigation ──────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <!-- Chart icon -->
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+      <span>AlgoDesk</span>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-section">Modules</div>
+
+      <a class="nav-item" href="/strategy-builder" id="nav-strategy-builder">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+        </svg>
+        <span>Strategy Builder</span>
+      </a>
+
+      <a class="nav-item" href="/backtester" id="nav-backtester">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+        </svg>
+        <span>Backtester</span>
+      </a>
+
+      <a class="nav-item" href="/screener" id="nav-screener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <span>Screener</span>
+      </a>
+
+      <a class="nav-item" href="/live-bot" id="nav-live-bot">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>
+        </svg>
+        <span>Live Bot</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span class="status-dot"></span>
+      <span>System Ready</span>
+    </div>
+  </aside>
+
+  <!-- ── Main area ────────────────────────────────────────────────────── -->
+  <div class="main">
+    <!-- ── Topbar ───────────────────────────────────────────────────── -->
+    <header class="topbar">
+      <span class="topbar-title" id="topbar-title">AlgoDesk</span>
+      <span class="topbar-meta" id="topbar-meta"></span>
+      <div class="topbar-spacer"></div>
+      <span class="badge badge-amber" id="topbar-version">v2.0</span>
+    </header>
+
+    <!-- ── Page content injected here ──────────────────────────────── -->
+    <main class="page-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<!-- Highlight active nav item based on current URL -->
+<script>
+  (function () {
+    const path = window.location.pathname;
+    const map = {
+      '/strategy-builder': 'nav-strategy-builder',
+      '/backtester':       'nav-backtester',
+      '/screener':         'nav-screener',
+      '/live-bot':         'nav-live-bot',
+    };
+    const id = map[path] || 'nav-strategy-builder';
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+  })();
+</script>
+</body>
+</html>
